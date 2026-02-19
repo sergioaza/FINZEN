@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.deps import get_db, get_current_user, oauth2_scheme
 from app.limiter import limiter
 from app.models.revoked_token import RevokedToken
