@@ -32,12 +32,13 @@ def register(request: Request, data: UserCreate, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == data.email).first():
         raise HTTPException(status_code=400, detail="El email ya está registrado")
 
-    verify_token = secrets.token_urlsafe(32)
+    email_enabled = bool(settings.resend_api_key)
+    verify_token = secrets.token_urlsafe(32) if email_enabled else None
     user = User(
         email=data.email,
         password_hash=hash_password(data.password),
         name=data.name,
-        email_verified=False,
+        email_verified=not email_enabled,
         email_verify_token=verify_token,
     )
     db.add(user)
@@ -45,10 +46,11 @@ def register(request: Request, data: UserCreate, db: Session = Depends(get_db)):
     db.refresh(user)
     seed_categories(db, user.id)
 
-    try:
-        send_verification_email(user.email, verify_token)
-    except Exception:
-        pass
+    if email_enabled:
+        try:
+            send_verification_email(user.email, verify_token)
+        except Exception:
+            pass
 
     ip = request.client.host if request.client else None
     log_action(db, "register", user_id=user.id, ip=ip)
