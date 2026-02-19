@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { authApi } from "../api/auth";
+import { AuthContext } from "../context/AuthContext";
 import { Input } from "../components/common/Input";
 import { Button } from "../components/common/Button";
 
@@ -52,6 +53,7 @@ function LeftPanel() {
 
 export default function Register() {
   const navigate = useNavigate();
+  const { login } = useContext(AuthContext);
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -65,8 +67,20 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      const data = await authApi.register(form);
-      navigate("/verificar-email", { state: { email: data.email } });
+      await authApi.register(form);
+      // Intentar login automático tras registro
+      try {
+        const loginData = await authApi.login({ email: form.email, password: form.password });
+        login(loginData.access_token, loginData.user);
+        navigate("/");
+      } catch (loginErr) {
+        // 403 = email no verificado
+        if (loginErr.response?.status === 403) {
+          navigate("/verificar-email", { state: { email: form.email } });
+        } else {
+          navigate("/login");
+        }
+      }
     } catch (err) {
       setError(err.response?.data?.detail || "Error al registrarse");
     } finally {
