@@ -13,7 +13,7 @@ def send_verification_email(email: str, token: str) -> None:
         import resend
         resend.api_key = settings.resend_api_key
         resend.Emails.send({
-            "from": "FinZen <noreply@resend.dev>",
+            "from": "FinZen <onboarding@resend.dev>",
             "to": email,
             "subject": "Verifica tu cuenta en FinZen",
             "html": f"""
@@ -45,7 +45,7 @@ def send_reset_email(email: str, token: str) -> None:
         import resend
         resend.api_key = settings.resend_api_key
         resend.Emails.send({
-            "from": "FinZen <noreply@resend.dev>",
+            "from": "FinZen <onboarding@resend.dev>",
             "to": email,
             "subject": "Restablece tu contraseña en FinZen",
             "html": f"""
