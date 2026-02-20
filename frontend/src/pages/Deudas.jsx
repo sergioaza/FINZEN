@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { debtsApi } from "../api/debts";
+import { accountsApi } from "../api/accounts";
 import { Button } from "../components/common/Button";
 import { Input, Select } from "../components/common/Input";
 import { Modal } from "../components/common/Modal";
@@ -7,10 +8,11 @@ import { Badge } from "../components/common/Badge";
 import { formatCurrency, formatDate, todayISO } from "../utils/format";
 
 const emptyForm = { counterpart_name: "", original_amount: "", type: "owe", date: todayISO(), description: "" };
-const emptyPayment = { amount: "", date: todayISO(), notes: "" };
+const emptyPayment = { amount: "", date: todayISO(), notes: "", account_id: "" };
 
 export default function Deudas() {
   const [debts, setDebts] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null); // null | "add" | "payment"
   const [form, setForm] = useState(emptyForm);
@@ -21,8 +23,9 @@ export default function Deudas() {
 
   const fetchDebts = async () => {
     setLoading(true);
-    const ds = await debtsApi.list();
+    const [ds, accs] = await Promise.all([debtsApi.list(), accountsApi.list()]);
     setDebts(ds);
+    setAccounts(accs);
     setLoading(false);
   };
 
@@ -65,7 +68,11 @@ export default function Deudas() {
     }
     setSaving(true);
     try {
-      await debtsApi.addPayment(selectedDebt.id, { ...paymentForm, amount: parseFloat(paymentForm.amount) });
+      await debtsApi.addPayment(selectedDebt.id, {
+        ...paymentForm,
+        amount: parseFloat(paymentForm.amount),
+        account_id: paymentForm.account_id ? parseInt(paymentForm.account_id) : null,
+      });
       setModal(null);
       fetchDebts();
     } catch (err) {
@@ -207,6 +214,14 @@ export default function Deudas() {
             </div>
           )}
           <Input label="Monto del abono (COP)" type="number" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} placeholder="0" min="0" />
+          <Select label="Descontar de cuenta (opcional)" value={paymentForm.account_id} onChange={(e) => setPaymentForm({ ...paymentForm, account_id: e.target.value })}>
+            <option value="">— Sin descontar de ninguna cuenta —</option>
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name} ({formatCurrency(a.balance)})
+              </option>
+            ))}
+          </Select>
           <Input label="Fecha" type="date" value={paymentForm.date} onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })} />
           <Input label="Notas" value={paymentForm.notes} onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })} placeholder="Opcional..." />
           {error && <p className="text-red-500 text-sm">{error}</p>}
