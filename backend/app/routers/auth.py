@@ -19,6 +19,7 @@ from app.schemas.user import (
     UserOut,
     OnboardingUpdate,
     VerifyEmailRequest,
+    UserPreferencesUpdate,
 )
 from app.utils.audit import log_action
 from app.utils.auth import decode_token, hash_password, verify_password, create_token
@@ -41,6 +42,9 @@ def register(request: Request, data: UserCreate, db: Session = Depends(get_db)):
         name=data.name,
         email_verified=not email_enabled,
         email_verify_token=verify_token,
+        locale=data.locale,
+        country=data.country,
+        currency=data.currency,
     )
     db.add(user)
     db.commit()
@@ -186,6 +190,19 @@ def reset_password(request: Request, data: ResetPasswordRequest, db: Session = D
 
 @router.get("/me", response_model=UserOut)
 def me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+
+@router.patch("/me/preferences", response_model=UserOut)
+def update_preferences(
+    data: UserPreferencesUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(current_user, field, value)
+    db.commit()
+    db.refresh(current_user)
     return current_user
 
 

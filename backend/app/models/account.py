@@ -28,6 +28,7 @@ class Account(Base):
     type: Mapped[AccountType] = mapped_column(Enum(AccountType), nullable=False)
     account_subtype: Mapped[AccountSubtype] = mapped_column(Enum(AccountSubtype), nullable=False)
     balance: Mapped[float] = mapped_column(Float, default=0.0)
+    credit_limit: Mapped[float | None] = mapped_column(Float, nullable=True)
     color: Mapped[str] = mapped_column(String, default="#3B82F6")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

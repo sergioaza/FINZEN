@@ -23,7 +23,7 @@ const SUBTYPES = {
 
 const COLORS = ["#3B82F6", "#10B981", "#8B5CF6", "#F59E0B", "#EF4444", "#EC4899", "#06B6D4", "#84CC16"];
 
-const emptyAccount = { name: "", type: "debit", account_subtype: "savings", balance: "", color: "#3B82F6" };
+const emptyAccount = { name: "", type: "debit", account_subtype: "savings", balance: "", color: "#3B82F6", credit_limit: "" };
 
 export default function Onboarding() {
   const { updateUser } = useAuth();
@@ -58,6 +58,7 @@ export default function Onboarding() {
         await accountsApi.create({
           ...acc,
           balance: parseFloat(acc.balance) || 0,
+          credit_limit: acc.type === "credit" && acc.credit_limit ? parseFloat(acc.credit_limit) : null,
         });
       }
       const updatedUser = await authApi.completeOnboarding();
@@ -139,6 +140,16 @@ export default function Onboarding() {
                   placeholder="0"
                   min="0"
                 />
+                {acc.type === "credit" && (
+                  <Input
+                    label="Cupo total (COP)"
+                    type="number"
+                    value={acc.credit_limit}
+                    onChange={(e) => updateAccount(i, "credit_limit", e.target.value)}
+                    placeholder="ej. 5000000"
+                    min="0"
+                  />
+                )}
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Color</label>

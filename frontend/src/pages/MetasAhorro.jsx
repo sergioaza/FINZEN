@@ -1,22 +1,35 @@
 import { useState, useEffect } from "react";
 import { goalsApi } from "../api/goals";
 import { Button } from "../components/common/Button";
-import { Input } from "../components/common/Input";
+import { Input, Select } from "../components/common/Input";
 import { Modal } from "../components/common/Modal";
 import { Badge } from "../components/common/Badge";
 import { formatCurrency, formatDate, todayISO } from "../utils/format";
 
 const COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#3b82f6", "#ef4444", "#14b8a6"];
 
-const emptyForm = { name: "", target_amount: "", target_date: "", description: "", color: "#6366f1" };
-const emptyContribution = { amount: "", date: todayISO(), notes: "" };
+const FREQUENCY_OPTIONS = [
+  { value: "daily", label: "Diaria" },
+  { value: "weekly", label: "Semanal" },
+  { value: "biweekly", label: "Quincenal" },
+  { value: "monthly", label: "Mensual" },
+];
+
+const emptyForm = {
+  name: "",
+  target_amount: "",
+  quota_amount: "",
+  frequency: "monthly",
+  description: "",
+  color: "#6366f1",
+};
 
 export default function MetasAhorro() {
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(null); // null | "add" | "edit" | "contribution"
+  const [modal, setModal] = useState(null); // null | "add" | "edit" | "quota"
   const [form, setForm] = useState(emptyForm);
-  const [contributionForm, setContributionForm] = useState(emptyContribution);
+  const [otherAmount, setOtherAmount] = useState({ amount: "", notes: "" });
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -41,7 +54,8 @@ export default function MetasAhorro() {
     setForm({
       name: goal.name,
       target_amount: goal.target_amount,
-      target_date: goal.target_date || "",
+      quota_amount: goal.quota_amount,
+      frequency: goal.frequency,
       description: goal.description,
       color: goal.color,
     });
@@ -49,11 +63,11 @@ export default function MetasAhorro() {
     setModal("edit");
   };
 
-  const openContribution = (goal) => {
+  const openOtherAmount = (goal) => {
     setSelectedGoal(goal);
-    setContributionForm(emptyContribution);
+    setOtherAmount({ amount: "", notes: "" });
     setError("");
-    setModal("contribution");
+    setModal("quota");
   };
 
   const handleSave = async () => {
@@ -63,11 +77,16 @@ export default function MetasAhorro() {
     }
     setSaving(true);
     try {
-      await goalsApi.create({
+      const payload = {
         ...form,
         target_amount: parseFloat(form.target_amount),
-        target_date: form.target_date || null,
-      });
+        quota_amount: parseFloat(form.quota_amount) || 0,
+      };
+      if (modal === "add") {
+        await goalsApi.create(payload);
+      } else {
+        await goalsApi.update(selectedGoal.id, payload);
+      }
       setModal(null);
       fetchGoals();
     } catch (err) {
@@ -77,37 +96,36 @@ export default function MetasAhorro() {
     }
   };
 
-  const handleEdit = async () => {
-    if (!form.name || !form.target_amount) {
-      setError("Nombre y objetivo son requeridos");
-      return;
-    }
+  const handlePayQuota = async (goal) => {
+    if (!goal.quota_amount) return;
     setSaving(true);
     try {
-      await goalsApi.update(selectedGoal.id, {
-        ...form,
-        target_amount: parseFloat(form.target_amount),
-        target_date: form.target_date || null,
+      await goalsApi.addContribution(goal.id, {
+        amount: goal.quota_amount,
+        date: todayISO(),
+        notes: "",
+        is_quota_payment: true,
       });
-      setModal(null);
       fetchGoals();
     } catch (err) {
-      setError(err.response?.data?.detail || "Error al actualizar");
+      alert(err.response?.data?.detail || "Error al registrar cuota");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleContribution = async () => {
-    if (!contributionForm.amount || !contributionForm.date) {
-      setError("Monto y fecha son requeridos");
+  const handleOtherAmount = async () => {
+    if (!otherAmount.amount) {
+      setError("El monto es requerido");
       return;
     }
     setSaving(true);
     try {
       await goalsApi.addContribution(selectedGoal.id, {
-        ...contributionForm,
-        amount: parseFloat(contributionForm.amount),
+        amount: parseFloat(otherAmount.amount),
+        date: todayISO(),
+        notes: otherAmount.notes,
+        is_quota_payment: false,
       });
       setModal(null);
       fetchGoals();
@@ -118,6 +136,12 @@ export default function MetasAhorro() {
     }
   };
 
+  const handleAchieve = async (id) => {
+    if (!confirm("¿Marcar esta meta como lograda?")) return;
+    await goalsApi.markAsAchieved(id);
+    fetchGoals();
+  };
+
   const handleDelete = async (id) => {
     if (!confirm("¿Eliminar esta meta?")) return;
     await goalsApi.delete(id);
@@ -125,7 +149,7 @@ export default function MetasAhorro() {
   };
 
   const activeGoals = goals.filter((g) => g.status === "active");
-  const completedGoals = goals.filter((g) => g.status === "completed");
+  const achievedGoals = goals.filter((g) => g.status === "achieved");
   const totalSaved = activeGoals.reduce((s, g) => s + g.current_amount, 0);
   const totalTarget = activeGoals.reduce((s, g) => s + g.target_amount, 0);
 
@@ -147,7 +171,8 @@ export default function MetasAhorro() {
 
   function GoalCard({ goal }) {
     const pct = Math.min((goal.current_amount / goal.target_amount) * 100, 100);
-    const isCompleted = goal.status === "completed";
+    const isAchieved = goal.status === "achieved";
+    const freqLabel = FREQUENCY_OPTIONS.find((f) => f.value === goal.frequency)?.label || goal.frequency;
     return (
       <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-800">
         <div className="flex items-start justify-between mb-3">
@@ -156,11 +181,13 @@ export default function MetasAhorro() {
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-semibold text-gray-800 dark:text-white truncate">{goal.name}</h3>
-                {isCompleted && <Badge variant="income">Completada</Badge>}
+                {isAchieved && <Badge variant="income">Lograda</Badge>}
               </div>
               {goal.description && <p className="text-xs text-gray-400 mt-0.5">{goal.description}</p>}
-              {goal.target_date && (
-                <p className="text-xs text-gray-400">Fecha objetivo: {formatDate(goal.target_date)}</p>
+              {goal.quota_amount > 0 && (
+                <p className="text-xs text-gray-400">
+                  Cuota {freqLabel.toLowerCase()}: {formatCurrency(goal.quota_amount)}
+                </p>
               )}
             </div>
           </div>
@@ -173,7 +200,7 @@ export default function MetasAhorro() {
         <div className="mb-3">
           <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
             <span>{pct.toFixed(0)}%</span>
-            <span>{formatCurrency(goal.target_amount - goal.current_amount)} restante</span>
+            <span>{formatCurrency(goal.remaining_amount)} restante</span>
           </div>
           <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
             <div
@@ -183,12 +210,29 @@ export default function MetasAhorro() {
           </div>
         </div>
 
-        <div className="flex gap-2">
-          {!isCompleted && (
-            <Button size="sm" variant="secondary" onClick={() => openContribution(goal)}>+ Aportación</Button>
+        {goal.estimated_date && !isAchieved && (
+          <p className="text-xs text-gray-400 mb-3">
+            Fecha estimada: {formatDate(goal.estimated_date)}
+            {goal.estimated_months != null && ` (~${goal.estimated_months} meses)`}
+          </p>
+        )}
+
+        <div className="flex gap-2 flex-wrap">
+          {!isAchieved && goal.quota_amount > 0 && (
+            <Button size="sm" onClick={() => handlePayQuota(goal)} disabled={saving}>
+              Pagar cuota
+            </Button>
           )}
-          {!isCompleted && (
-            <Button size="sm" variant="secondary" onClick={() => openEdit(goal)}>Editar</Button>
+          {!isAchieved && (
+            <Button size="sm" variant="secondary" onClick={() => openOtherAmount(goal)}>
+              Otro monto
+            </Button>
+          )}
+          {!isAchieved && (
+            <>
+              <Button size="sm" variant="secondary" onClick={() => openEdit(goal)}>Editar</Button>
+              <Button size="sm" variant="secondary" onClick={() => handleAchieve(goal.id)}>Lograda ✓</Button>
+            </>
           )}
           <button
             onClick={() => handleDelete(goal.id)}
@@ -242,11 +286,11 @@ export default function MetasAhorro() {
             </div>
           )}
 
-          {completedGoals.length > 0 && (
+          {achievedGoals.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Completadas</h3>
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Logradas</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {completedGoals.map((g) => <GoalCard key={g.id} goal={g} />)}
+                {achievedGoals.map((g) => <GoalCard key={g.id} goal={g} />)}
               </div>
             </div>
           )}
@@ -260,8 +304,12 @@ export default function MetasAhorro() {
         </div>
       )}
 
-      {/* Modal: Nueva meta */}
-      <Modal isOpen={modal === "add"} onClose={() => setModal(null)} title="Nueva meta de ahorro">
+      {/* Modal: Nueva / Editar meta */}
+      <Modal
+        isOpen={modal === "add" || modal === "edit"}
+        onClose={() => setModal(null)}
+        title={modal === "edit" ? `Editar — ${selectedGoal?.name}` : "Nueva meta de ahorro"}
+      >
         <div className="space-y-4">
           <Input
             label="Nombre"
@@ -277,12 +325,25 @@ export default function MetasAhorro() {
             placeholder="0"
             min="0"
           />
-          <Input
-            label="Fecha objetivo (opcional)"
-            type="date"
-            value={form.target_date}
-            onChange={(e) => setForm({ ...form, target_date: e.target.value })}
-          />
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Cuota periódica (COP)"
+              type="number"
+              value={form.quota_amount}
+              onChange={(e) => setForm({ ...form, quota_amount: e.target.value })}
+              placeholder="0"
+              min="0"
+            />
+            <Select
+              label="Frecuencia"
+              value={form.frequency}
+              onChange={(e) => setForm({ ...form, frequency: e.target.value })}
+            >
+              {FREQUENCY_OPTIONS.map((f) => (
+                <option key={f.value} value={f.value}>{f.label}</option>
+              ))}
+            </Select>
+          </div>
           <Input
             label="Descripción (opcional)"
             value={form.description}
@@ -297,92 +358,41 @@ export default function MetasAhorro() {
           <div className="flex gap-3 pt-2">
             <Button variant="secondary" className="flex-1" onClick={() => setModal(null)}>Cancelar</Button>
             <Button className="flex-1" onClick={handleSave} disabled={saving}>
-              {saving ? "Guardando..." : "Crear meta"}
+              {saving ? "Guardando..." : modal === "edit" ? "Guardar cambios" : "Crear meta"}
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Modal: Editar meta */}
-      <Modal isOpen={modal === "edit"} onClose={() => setModal(null)} title={`Editar — ${selectedGoal?.name}`}>
-        <div className="space-y-4">
-          <Input
-            label="Nombre"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            placeholder="ej. Televisor Samsung"
-          />
-          <Input
-            label="Objetivo (COP)"
-            type="number"
-            value={form.target_amount}
-            onChange={(e) => setForm({ ...form, target_amount: e.target.value })}
-            placeholder="0"
-            min="0"
-          />
-          <Input
-            label="Fecha objetivo (opcional)"
-            type="date"
-            value={form.target_date}
-            onChange={(e) => setForm({ ...form, target_date: e.target.value })}
-          />
-          <Input
-            label="Descripción (opcional)"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            placeholder="..."
-          />
-          <div>
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Color</p>
-            <ColorPicker value={form.color} onChange={(c) => setForm({ ...form, color: c })} />
-          </div>
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-          <div className="flex gap-3 pt-2">
-            <Button variant="secondary" className="flex-1" onClick={() => setModal(null)}>Cancelar</Button>
-            <Button className="flex-1" onClick={handleEdit} disabled={saving}>
-              {saving ? "Guardando..." : "Guardar cambios"}
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Modal: Añadir aportación */}
-      <Modal isOpen={modal === "contribution"} onClose={() => setModal(null)} title={`Aportación — ${selectedGoal?.name}`}>
+      {/* Modal: Otro monto */}
+      <Modal isOpen={modal === "quota"} onClose={() => setModal(null)} title={`Aportación — ${selectedGoal?.name}`}>
         <div className="space-y-4">
           {selectedGoal && (
-            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Ahorrado:{" "}
-                <strong className="text-gray-900 dark:text-white">{formatCurrency(selectedGoal.current_amount)}</strong>
-                {" / "}
-                {formatCurrency(selectedGoal.target_amount)}
-              </p>
+            <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-500 dark:text-gray-400">
+              Ahorrado:{" "}
+              <strong className="text-gray-900 dark:text-white">{formatCurrency(selectedGoal.current_amount)}</strong>
+              {" / "}
+              {formatCurrency(selectedGoal.target_amount)}
             </div>
           )}
           <Input
             label="Monto (COP)"
             type="number"
-            value={contributionForm.amount}
-            onChange={(e) => setContributionForm({ ...contributionForm, amount: e.target.value })}
+            value={otherAmount.amount}
+            onChange={(e) => setOtherAmount({ ...otherAmount, amount: e.target.value })}
             placeholder="0"
             min="0"
           />
           <Input
-            label="Fecha"
-            type="date"
-            value={contributionForm.date}
-            onChange={(e) => setContributionForm({ ...contributionForm, date: e.target.value })}
-          />
-          <Input
             label="Notas (opcional)"
-            value={contributionForm.notes}
-            onChange={(e) => setContributionForm({ ...contributionForm, notes: e.target.value })}
+            value={otherAmount.notes}
+            onChange={(e) => setOtherAmount({ ...otherAmount, notes: e.target.value })}
             placeholder="..."
           />
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <div className="flex gap-3 pt-2">
             <Button variant="secondary" className="flex-1" onClick={() => setModal(null)}>Cancelar</Button>
-            <Button className="flex-1" onClick={handleContribution} disabled={saving}>
+            <Button className="flex-1" onClick={handleOtherAmount} disabled={saving}>
               {saving ? "Registrando..." : "Registrar"}
             </Button>
           </div>

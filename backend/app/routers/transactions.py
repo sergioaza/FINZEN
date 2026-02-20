@@ -59,6 +59,11 @@ def create_transaction(
     account = db.query(Account).filter(Account.id == data.account_id, Account.user_id == current_user.id).first()
     if not account:
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+    if (account.type == AccountType.credit
+            and data.type == TransactionType.expense
+            and account.credit_limit is not None
+            and account.balance + data.amount > account.credit_limit):
+        raise HTTPException(status_code=400, detail=f"Cupo insuficiente. Disponible: {account.credit_limit - account.balance:.0f}")
     tx = Transaction(**data.model_dump(), user_id=current_user.id)
     _apply_balance(account, data.type, data.amount)
     db.add(tx)
@@ -91,6 +96,11 @@ def update_transaction(
     # Apply new balance on new account (may be different from old)
     new_account = db.query(Account).filter(Account.id == tx.account_id).first()
     if new_account:
+        if (new_account.type == AccountType.credit
+                and tx.type == TransactionType.expense
+                and new_account.credit_limit is not None
+                and new_account.balance + tx.amount > new_account.credit_limit):
+            raise HTTPException(status_code=400, detail=f"Cupo insuficiente. Disponible: {new_account.credit_limit - new_account.balance:.0f}")
         _apply_balance(new_account, tx.type, tx.amount)
 
     db.commit()
@@ -103,9 +113,29 @@ def delete_transaction(tx_id: int, db: Session = Depends(get_db), current_user: 
     tx = db.query(Transaction).filter(Transaction.id == tx_id, Transaction.user_id == current_user.id).first()
     if not tx:
         raise HTTPException(status_code=404, detail="Transacción no encontrada")
+
+    # Si es parte de una transferencia, obtener el par antes de tocar nada
+    pair = None
+    if tx.transfer_pair_id:
+        pair = db.query(Transaction).filter(Transaction.id == tx.transfer_pair_id).first()
+
+    # Revertir saldo de esta transacción
     account = db.query(Account).filter(Account.id == tx.account_id).first()
     if account:
         _apply_balance(account, tx.type, tx.amount, reverse=True)
+
+    # Revertir saldo del par y romper la FK circular antes de borrar
+    if pair:
+        pair_account = db.query(Account).filter(Account.id == pair.account_id).first()
+        if pair_account:
+            _apply_balance(pair_account, pair.type, pair.amount, reverse=True)
+        pair.transfer_pair_id = None
+
+    tx.transfer_pair_id = None
+    db.flush()
+
+    if pair:
+        db.delete(pair)
     db.delete(tx)
     db.commit()
 
@@ -120,6 +150,15 @@ def create_transfer(
     to_account = db.query(Account).filter(Account.id == data.to_account_id, Account.user_id == current_user.id).first()
     if not from_account or not to_account:
         raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+
+    # Para cuentas débito, verificar saldo suficiente
+    if from_account.type == AccountType.debit and from_account.balance < data.amount:
+        raise HTTPException(status_code=400, detail="Saldo insuficiente en la cuenta origen")
+    # Para cuentas crédito, verificar cupo disponible
+    if (from_account.type == AccountType.credit
+            and from_account.credit_limit is not None
+            and from_account.balance + data.amount > from_account.credit_limit):
+        raise HTTPException(status_code=400, detail=f"Cupo insuficiente. Disponible: {from_account.credit_limit - from_account.balance:.0f}")
 
     tx_out = Transaction(
         user_id=current_user.id,

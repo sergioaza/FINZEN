@@ -2,8 +2,9 @@ import { useState, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { authApi } from "../api/auth";
 import { AuthContext } from "../context/AuthContext";
-import { Input } from "../components/common/Input";
+import { Input, Select } from "../components/common/Input";
 import { Button } from "../components/common/Button";
+import { LANGUAGES, COUNTRIES, CURRENCIES, COUNTRY_CURRENCY_MAP, COUNTRY_LOCALE_MAP } from "../utils/locale";
 
 function LeftPanel() {
   return (
@@ -54,9 +55,15 @@ function LeftPanel() {
 export default function Register() {
   const navigate = useNavigate();
   const { login } = useContext(AuthContext);
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", locale: "es", country: "", currency: "COP" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const handleCountryChange = (country) => {
+    const currency = COUNTRY_CURRENCY_MAP[country] || form.currency;
+    const locale = COUNTRY_LOCALE_MAP[country] || form.locale;
+    setForm({ ...form, country, currency, locale });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -67,7 +74,7 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      await authApi.register(form);
+      await authApi.register({ ...form, country: form.country || null });
       // Intentar login automático tras registro
       try {
         const loginData = await authApi.login({ email: form.email, password: form.password });
@@ -131,6 +138,34 @@ export default function Register() {
               placeholder="Mínimo 6 caracteres"
               required
             />
+            <Select
+              label="Idioma"
+              value={form.locale}
+              onChange={(e) => setForm({ ...form, locale: e.target.value })}
+            >
+              {LANGUAGES.map((l) => (
+                <option key={l.value} value={l.value}>{l.label}</option>
+              ))}
+            </Select>
+            <Select
+              label="País (opcional)"
+              value={form.country}
+              onChange={(e) => handleCountryChange(e.target.value)}
+            >
+              <option value="">— Selecciona un país —</option>
+              {COUNTRIES.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </Select>
+            <Select
+              label="Moneda"
+              value={form.currency}
+              onChange={(e) => setForm({ ...form, currency: e.target.value })}
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </Select>
             {error && (
               <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm">
                 {error}
