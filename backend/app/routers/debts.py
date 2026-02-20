@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.deps import get_db, get_current_user
+from app.models.account import Account, AccountType
 from app.models.debt import Debt, DebtPayment, DebtStatus
 from app.models.user import User
 from app.schemas.debt import DebtCreate, DebtUpdate, DebtPaymentCreate, DebtOut, DebtPaymentOut
@@ -66,6 +67,19 @@ def add_payment(
         raise HTTPException(status_code=404, detail="Deuda no encontrada")
     if data.amount > debt.remaining_amount:
         raise HTTPException(status_code=400, detail="El abono supera el saldo pendiente")
+
+    # Descontar saldo de la cuenta si se especificó
+    if data.account_id is not None:
+        account = db.query(Account).filter(Account.id == data.account_id, Account.user_id == current_user.id).first()
+        if not account:
+            raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+        if account.type == AccountType.debit:
+            if account.balance < data.amount:
+                raise HTTPException(status_code=400, detail="Saldo insuficiente en la cuenta seleccionada")
+            account.balance -= data.amount
+        else:  # crédito: el abono reduce la deuda de la tarjeta
+            account.balance -= data.amount
+
     debt.remaining_amount -= data.amount
     if debt.remaining_amount <= 0:
         debt.remaining_amount = 0

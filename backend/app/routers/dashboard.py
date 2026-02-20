@@ -25,11 +25,13 @@ def get_summary(db: Session = Depends(get_db), current_user: User = Depends(get_
     start_month = today.replace(day=1)
     end_month = today.replace(day=calendar.monthrange(today.year, today.month)[1])
 
+    # Excluir transferencias entre cuentas propias (transfer_pair_id != None)
     income_month = db.query(func.sum(Transaction.amount)).filter(
         Transaction.user_id == current_user.id,
         Transaction.type == TransactionType.income,
         Transaction.date >= start_month,
         Transaction.date <= end_month,
+        Transaction.transfer_pair_id == None,
     ).scalar() or 0.0
 
     expense_month = db.query(func.sum(Transaction.amount)).filter(
@@ -37,6 +39,7 @@ def get_summary(db: Session = Depends(get_db), current_user: User = Depends(get_
         Transaction.type == TransactionType.expense,
         Transaction.date >= start_month,
         Transaction.date <= end_month,
+        Transaction.transfer_pair_id == None,
     ).scalar() or 0.0
 
     upcoming_limit = today + timedelta(days=7)
@@ -73,6 +76,7 @@ def get_summary(db: Session = Depends(get_db), current_user: User = Depends(get_
                 "type": a.type,
                 "account_subtype": a.account_subtype,
                 "balance": a.balance,
+                "credit_limit": a.credit_limit,
                 "color": a.color,
             }
             for a in accounts

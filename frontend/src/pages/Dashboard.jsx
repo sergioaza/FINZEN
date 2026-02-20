@@ -26,16 +26,35 @@ function AccountRow({ account }) {
     digital: "Digital",
     credit_card: "Tarjeta Crédito",
   };
+  const isCredit = account.type === "credit";
+  const hasLimit = isCredit && account.credit_limit != null && account.credit_limit > 0;
+  const utilization = hasLimit ? Math.min((account.balance / account.credit_limit) * 100, 100) : 0;
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-gray-50 dark:border-gray-800 last:border-0">
-      <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: account.color }} />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{account.name}</p>
-        <p className="text-xs text-gray-400">{subtypeLabels[account.account_subtype]}</p>
+    <div className="py-3 border-b border-gray-50 dark:border-gray-800 last:border-0">
+      <div className="flex items-center gap-3">
+        <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: account.color }} />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{account.name}</p>
+          <p className="text-xs text-gray-400">{subtypeLabels[account.account_subtype]}</p>
+        </div>
+        <p className={`text-sm font-semibold ${isCredit ? "text-red-500" : "text-gray-900 dark:text-white"}`}>
+          {formatCurrency(account.balance)}
+        </p>
       </div>
-      <p className={`text-sm font-semibold ${account.type === "credit" ? "text-red-500" : "text-gray-900 dark:text-white"}`}>
-        {formatCurrency(account.balance)}
-      </p>
+      {hasLimit && (
+        <div className="mt-1.5 ml-6">
+          <div className="flex justify-between text-xs text-gray-400 mb-0.5">
+            <span>Disponible: {formatCurrency(account.credit_limit - account.balance)}</span>
+            <span>{utilization.toFixed(0)}%</span>
+          </div>
+          <div className="h-1 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full ${utilization >= 90 ? "bg-red-500" : utilization >= 70 ? "bg-amber-500" : "bg-emerald-500"}`}
+              style={{ width: `${utilization}%` }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
