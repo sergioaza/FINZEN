@@ -31,7 +31,7 @@ const SUBTYPE_LABELS = {
   credit_card: "T. Crédito",
 };
 
-const emptyForm = { name: "", type: "debit", account_subtype: "savings", balance: "", color: "#3B82F6" };
+const emptyForm = { name: "", type: "debit", account_subtype: "savings", balance: "", color: "#3B82F6", credit_limit: "" };
 
 export default function Cuentas() {
   const [accounts, setAccounts] = useState([]);
@@ -59,7 +59,7 @@ export default function Cuentas() {
   };
 
   const openEdit = (acc) => {
-    setForm({ name: acc.name, type: acc.type, account_subtype: acc.account_subtype, balance: acc.balance, color: acc.color });
+    setForm({ name: acc.name, type: acc.type, account_subtype: acc.account_subtype, balance: acc.balance, color: acc.color, credit_limit: acc.credit_limit ?? "" });
     setEditId(acc.id);
     setError("");
     setModal(true);
@@ -69,9 +69,13 @@ export default function Cuentas() {
     if (!form.name) { setError("El nombre es requerido"); return; }
     setSaving(true);
     try {
-      const payload = { ...form, balance: parseFloat(form.balance) || 0 };
+      const payload = {
+        ...form,
+        balance: parseFloat(form.balance) || 0,
+        credit_limit: form.type === "credit" && form.credit_limit ? parseFloat(form.credit_limit) : null,
+      };
       if (editId) {
-        await accountsApi.update(editId, { name: payload.name, balance: payload.balance, color: payload.color });
+        await accountsApi.update(editId, { name: payload.name, balance: payload.balance, color: payload.color, credit_limit: payload.credit_limit });
       } else {
         await accountsApi.create(payload);
       }
@@ -98,6 +102,10 @@ export default function Cuentas() {
   const totalDebt = creditAccounts.reduce((s, a) => s + a.balance, 0);
 
   function AccountCard({ account }) {
+    const isCredit = account.type === "credit";
+    const hasLimit = isCredit && account.credit_limit != null && account.credit_limit > 0;
+    const utilization = hasLimit ? Math.min((account.balance / account.credit_limit) * 100, 100) : 0;
+    const available = hasLimit ? account.credit_limit - account.balance : null;
     return (
       <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-800">
         <div className="flex items-start justify-between mb-4">
@@ -107,7 +115,7 @@ export default function Cuentas() {
             </div>
             <div>
               <h3 className="font-semibold text-gray-800 dark:text-white">{account.name}</h3>
-              <Badge variant={account.type === "credit" ? "expense" : "blue"}>{SUBTYPE_LABELS[account.account_subtype]}</Badge>
+              <Badge variant={isCredit ? "expense" : "blue"}>{SUBTYPE_LABELS[account.account_subtype]}</Badge>
             </div>
           </div>
           <div className="flex gap-1">
@@ -120,10 +128,25 @@ export default function Cuentas() {
           </div>
         </div>
         <div>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">{account.type === "credit" ? "Deuda acumulada" : "Saldo disponible"}</p>
-          <p className={`text-2xl font-bold ${account.type === "credit" ? "text-red-500" : "text-gray-900 dark:text-white"}`}>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">{isCredit ? "Deuda acumulada" : "Saldo disponible"}</p>
+          <p className={`text-2xl font-bold ${isCredit ? "text-red-500" : "text-gray-900 dark:text-white"}`}>
             {formatCurrency(account.balance)}
           </p>
+          {hasLimit && (
+            <div className="mt-3">
+              <div className="flex justify-between text-xs text-gray-400 mb-1">
+                <span>Cupo disponible: {formatCurrency(available)}</span>
+                <span>{utilization.toFixed(0)}% usado</span>
+              </div>
+              <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${utilization >= 90 ? "bg-red-500" : utilization >= 70 ? "bg-amber-500" : "bg-emerald-500"}`}
+                  style={{ width: `${utilization}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Cupo total: {formatCurrency(account.credit_limit)}</p>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -196,6 +219,9 @@ export default function Cuentas() {
             </>
           )}
           <Input label={form.type === "credit" ? "Deuda actual (COP)" : "Saldo actual (COP)"} type="number" value={form.balance} onChange={(e) => setForm({ ...form, balance: e.target.value })} placeholder="0" />
+          {form.type === "credit" && (
+            <Input label="Cupo total (COP)" type="number" value={form.credit_limit} onChange={(e) => setForm({ ...form, credit_limit: e.target.value })} placeholder="ej. 5000000" min="0" />
+          )}
           <div>
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Color</label>
             <div className="flex gap-2 flex-wrap">

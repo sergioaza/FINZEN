@@ -132,8 +132,12 @@ export default function Transacciones() {
 
   const handleDelete = async (id) => {
     if (!confirm("¿Eliminar esta transacción?")) return;
-    await transactionsApi.delete(id);
-    fetchAll();
+    try {
+      await transactionsApi.delete(id);
+      fetchAll();
+    } catch (err) {
+      alert(err.response?.data?.detail || "Error al eliminar la transacción");
+    }
   };
 
   const filteredCategories = categories.filter((c) => c.type === form.type);
@@ -272,7 +276,7 @@ export default function Transacciones() {
         <div className="space-y-4">
           <Select label="Cuenta origen" value={transferForm.from_account_id} onChange={(e) => setTransferForm({ ...transferForm, from_account_id: e.target.value })}>
             <option value="">Seleccionar...</option>
-            {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+            {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({formatCurrency(a.balance)})</option>)}
           </Select>
           <Select label="Cuenta destino" value={transferForm.to_account_id} onChange={(e) => setTransferForm({ ...transferForm, to_account_id: e.target.value })}>
             <option value="">Seleccionar...</option>

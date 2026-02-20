@@ -6,6 +6,9 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     name: str
+    locale: str = "es"
+    country: str | None = None
+    currency: str = "COP"
 
 
 class UserLogin(BaseModel):
@@ -19,9 +22,18 @@ class UserOut(BaseModel):
     name: str
     onboarding_done: bool
     email_verified: bool
+    locale: str
+    country: str | None
+    currency: str
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class UserPreferencesUpdate(BaseModel):
+    locale: str | None = None
+    country: str | None = None
+    currency: str | None = None
 
 
 class Token(BaseModel):

@@ -13,4 +13,5 @@ export const authApi = {
   forgotPassword: (email) => api.post("/auth/forgot-password", { email }).then((r) => r.data),
   resetPassword: (token, newPassword) =>
     api.post("/auth/reset-password", { token, new_password: newPassword }).then((r) => r.data),
+  updatePreferences: (data) => api.patch("/auth/me/preferences", data).then((r) => r.data),
 };
