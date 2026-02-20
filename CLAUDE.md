@@ -1,10 +1,40 @@
 # FinZen — Guía del Proyecto
 
-App de finanzas personales en español. Stack: React 18 + Vite + Tailwind (frontend), FastAPI + SQLAlchemy 2.0 + Alembic (backend), PostgreSQL 15, Docker Compose.
+App de finanzas personales en español. Stack: React 18 + Vite + Tailwind (frontend), FastAPI + SQLAlchemy 2.0 + Alembic (backend), PostgreSQL 15.
 
 ---
 
-## Arquitectura actual (local)
+## Arquitectura de producción (actual)
+
+```
+Vercel          → Frontend React (build estático, CDN global)
+Render          → Backend FastAPI + uvicorn (Python 3.11)
+Neon.tech       → PostgreSQL serverless (backups automáticos)
+GitHub          → Repositorio: https://github.com/sergioaza/FINZEN
+```
+
+**Flujo de despliegue:**
+- `git push origin main` → Vercel y Render redesplegan automáticamente
+- Las migraciones de Alembic hay que correrlas manualmente (ver sección Migraciones)
+
+### Variables de entorno en Render (backend)
+Configuradas en el dashboard de Render → Environment:
+```
+DATABASE_URL   = postgresql://neondb_owner:...@neon.tech/neondb?sslmode=require
+SECRET_KEY     = <clave aleatoria 64+ chars>
+CORS_ORIGINS   = https://<tu-dominio-vercel>.vercel.app
+ACCESS_TOKEN_EXPIRE_MINUTES = 10080
+RESEND_API_KEY = <opcional — si está vacío, emails se auto-verifican>
+FRONTEND_URL   = https://<tu-dominio-vercel>.vercel.app
+```
+
+### Variables de entorno en Vercel (frontend)
+El frontend es build estático — las variables de entorno solo afectan el build.
+La URL del backend se configura en `frontend/src/api/axios.js` (baseURL apunta a Render).
+
+---
+
+## Arquitectura local (desarrollo)
 
 ```
 Docker Compose
@@ -15,7 +45,17 @@ Docker Compose
       └── volumen: postgres_data (persistente entre reinicios)
 ```
 
-### Puertos y URLs locales
+### Comandos locales
+```bash
+docker compose up -d                        # levantar todo
+docker compose up -d --build frontend       # rebuild frontend (cambios .jsx o deps npm)
+docker compose up --build                   # rebuild todo (cambios requirements.txt)
+docker compose logs -f backend              # ver logs backend
+docker compose down                         # apagar (conserva datos)
+docker compose down -v                      # apagar y BORRAR datos
+```
+
+### Puertos locales
 | Servicio | URL |
 |----------|-----|
 | Frontend | http://localhost:3000 |
@@ -23,26 +63,46 @@ Docker Compose
 | Swagger docs | http://localhost:8000/docs |
 | PostgreSQL | localhost:5432 (usuario: finzen, db: finzen_db) |
 
-### Comandos básicos
+---
+
+## Migraciones Alembic
+
+### Historial de migraciones
+| Revisión | Descripción |
+|----------|-------------|
+| `001` | Tablas iniciales: users, accounts, categories, transactions, budgets, recurring_expenses, recurring_payments, debts, debt_payments |
+| `002` | savings_goals + goal_contributions (modelo original) |
+| `003` | Seguridad: email_verified, email_verify_token, reset_token, revoked_tokens, audit_logs |
+| `004` | credit_limit en accounts + savings_goals v2 (quota_amount, frequency, WishlistStatus) |
+| `005` | locale, country, currency en users |
+
+### Correr migraciones en producción (Neon)
+
+**Opción A — desde local con Docker corriendo:**
 ```bash
-# Levantar todo
-docker compose up -d
+docker compose exec -e DATABASE_URL="postgresql://neondb_owner:<pass>@ep-aged-voice-aicp7f0m-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require" backend alembic upgrade head
+```
 
-# Levantar y reconstruir imágenes (tras cambios en Dockerfile o requirements)
-docker compose up --build
+**Opción B — desde local sin Docker (Python instalado):**
+```bash
+cd backend
+DATABASE_URL="postgresql://..." alembic upgrade head
+```
 
-# Reconstruir solo el frontend (tras cambios en .jsx o .css)
-docker compose up -d --build frontend
+**Opción C — desde la Shell de Render** (plan con shell habilitado):
+```bash
+alembic upgrade head
+```
 
-# Ver logs en tiempo real
-docker compose logs -f backend
-docker compose logs -f frontend
+### Verificar versión actual en Neon
+```bash
+docker compose exec -e DATABASE_URL="postgresql://..." backend alembic current
+# debe mostrar: 005 (head)
+```
 
-# Apagar (conserva datos)
-docker compose down
-
-# Apagar y BORRAR datos (volúmenes)
-docker compose down -v
+### Correr migraciones en local (DB local)
+```bash
+docker compose exec backend alembic upgrade head
 ```
 
 ---
@@ -58,31 +118,48 @@ FinZen/
 ├── backend/
 │   ├── requirements.txt
 │   ├── alembic.ini
-│   ├── alembic/versions/001_initial.py   ← migración única con todas las tablas
+│   ├── alembic/versions/
+│   │   ├── 001_initial.py
+│   │   ├── 002_savings_goals.py
+│   │   ├── 003_security.py
+│   │   ├── 004_credit_limit_goals_v2.py
+│   │   └── 005_user_locale_currency.py
 │   └── app/
-│       ├── main.py                  ← FastAPI app + CORS + 8 routers
+│       ├── main.py                  ← FastAPI app + CORS + routers
 │       ├── config.py                ← Pydantic Settings (lee .env / env vars)
 │       ├── database.py              ← SQLAlchemy engine + SessionLocal
 │       ├── deps.py                  ← get_db(), get_current_user()
 │       ├── models/                  ← user, account, category, transaction,
-│       │                               budget, recurring, debt
+│       │                               budget, recurring, debt, savings_goal
 │       ├── schemas/                 ← Pydantic schemas (mirrors de modelos)
 │       ├── routers/                 ← auth, accounts, categories, transactions,
-│       │                               budgets, recurring, debts, dashboard
+│       │                               budgets, recurring, debts, dashboard,
+│       │                               savings_goals
 │       └── utils/
 │           ├── auth.py              ← bcrypt directo + JWT (python-jose)
-│           └── seed.py              ← 17 categorías en español al registrarse
+│           ├── seed.py              ← 17 categorías en español al registrarse
+│           ├── email.py             ← envío de emails con Resend
+│           └── audit.py             ← log de acciones de seguridad
 └── frontend/
     ├── nginx.conf                   ← SPA routing + proxy /api/ → backend
     └── src/
         ├── api/                     ← axios.js (interceptor JWT) + módulos
-        ├── context/AuthContext.jsx  ← JWT + user state + onboarding_done
+        ├── context/AuthContext.jsx  ← JWT + user state + i18n changeLanguage
+        ├── hooks/
+        │   ├── useAuth.js
+        │   └── useCurrency.js       ← formateo dinámico según moneda del usuario
+        ├── i18n/
+        │   ├── index.js             ← configuración i18next (recursos inlineados)
+        │   └── locales/             ← es.json, en.json, pt.json
+        ├── utils/
+        │   ├── format.js            ← formatCurrency(amount, currency, locale)
+        │   └── locale.js            ← COUNTRIES, CURRENCIES, COUNTRY_CURRENCY_MAP
         ├── components/
         │   ├── Layout/              ← Sidebar.jsx + Topbar.jsx (dark mode)
         │   └── common/              ← Button, Input, Modal, Badge
         └── pages/                   ← Login, Register, Onboarding, Dashboard,
                                         Transacciones, Estadisticas, Presupuesto,
-                                        Recurrentes, Deudas, Cuentas
+                                        Recurrentes, Deudas, Cuentas, MetasAhorro
 ```
 
 ---
@@ -91,170 +168,106 @@ FinZen/
 
 | Tabla | Campos destacados |
 |-------|------------------|
-| `users` | id, email, password_hash, name, onboarding_done |
-| `accounts` | id, user_id, name, type(debit/credit), account_subtype, balance, color |
+| `users` | id, email, password_hash, name, onboarding_done, locale, country, currency, email_verified |
+| `accounts` | id, user_id, name, type(debit/credit), account_subtype, balance, **credit_limit**, color |
 | `categories` | id, user_id, name, type(income/expense), is_default |
-| `transactions` | id, user_id, account_id, category_id, type, amount, date, transfer_pair_id |
+| `transactions` | id, user_id, account_id, category_id, type, amount, date, description, transfer_pair_id |
 | `budgets` | id, user_id, category_id, month, year, limit_amount |
 | `recurring_expenses` | id, user_id, account_id, category_id, name, amount, frequency, next_date, is_active |
 | `recurring_payments` | id, recurring_expense_id, paid_date, amount |
 | `debts` | id, user_id, counterpart_name, original_amount, remaining_amount, type, status |
-| `debt_payments` | id, debt_id, amount, date, notes |
+| `debt_payments` | id, debt_id, amount, date, notes, **account_id** (opcional) |
+| `savings_goals` | id, user_id, name, target_amount, **quota_amount**, **frequency**, description, color, status(active/achieved) |
+| `goal_contributions` | id, goal_id, amount, date, notes, **is_quota_payment** |
+| `revoked_tokens` | id, jti, expires_at, revoked_at |
+| `audit_logs` | id, user_id, action, ip, details, created_at |
 
-**Lógica de saldos:**
+### Lógica de saldos
 - Cuenta débito + gasto → `balance -= amount`
 - Cuenta débito + ingreso → `balance += amount`
 - Cuenta crédito + gasto → `balance += amount` (deuda sube)
 - Cuenta crédito + ingreso/pago → `balance -= amount` (deuda baja)
+- Cuenta crédito: `credit_limit` es el cupo total. `credit_limit - balance` = cupo disponible
 
 **Transferencia entre cuentas:** crea 2 transacciones enlazadas por `transfer_pair_id`.
+El resumen del mes en Dashboard **excluye** transacciones con `transfer_pair_id != null`.
+
+**Abono a deuda con descuento de cuenta:** `debt_payments.account_id` es opcional. Si se pasa, el backend descuenta `amount` del `balance` de esa cuenta.
+
+---
+
+## Features implementadas
+
+### Cupo de tarjeta de crédito
+- Campo `credit_limit` en `accounts` (nullable, solo aplica a crédito)
+- Validación en `create_transaction`, `update_transaction` y `create_transfer`: si `balance + amount > credit_limit` → HTTP 400
+- UI: campo en modal de nueva/editar cuenta + onboarding. Card y Dashboard muestran barra de utilización (verde < 70%, ámbar 70-90%, rojo > 90%)
+
+### Metas de ahorro v2 (wishlist)
+- Nuevo modelo: `quota_amount` (cuota periódica), `frequency` (daily/weekly/biweekly/monthly), `status` = active | achieved
+- Campos calculados (no en DB): `current_amount` (suma de contribuciones), `remaining_amount`, `estimated_date`, `estimated_months`
+- Endpoints: `POST /goals/{id}/achieve`, `POST /goals/{id}/contributions`
+- UI: botón "Pagar cuota" (1 click, sin modal), "Otro monto" (modal libre), "Lograda ✓"
+- Migración 004 convierte enum `goalstatus(completed)` → `wishliststatus(achieved)` y migra `current_amount` a `goal_contributions`
+
+### i18n (español / inglés / portugués)
+- Librería: `i18next` + `react-i18next` (recursos inlineados, sin HTTP backend)
+- Idioma se cambia automáticamente al login/loadUser según `user.locale`
+- `useCurrency()` hook: devuelve función de formato según `user.currency`
+- `formatCurrency(amount, currency = "COP", locale = "es-CO")` — backward-compatible
+- Registro: selección de idioma, país (auto-sugiere moneda) y moneda
+- Endpoint: `PATCH /auth/me/preferences` (locale, country, currency)
+- Pendiente: página de perfil para cambiar preferencias post-registro
+- Pendiente: conectar `useCurrency()` en todas las páginas (actualmente solo funciona con defaults)
 
 ---
 
 ## Lecciones aprendidas — bugs conocidos
 
-1. **Pydantic + campo nombrado igual que su tipo** (`date: date | None`): Pydantic pasa el dict de clase como `localns` al evaluar anotaciones, lo que hace que `date` resuelva al valor del campo (`None`) en vez del tipo. Fix: renombrar el import → `from datetime import date as DateType`.
+1. **Pydantic + campo nombrado igual que su tipo** (`date: date | None`): Fix → `from datetime import date as DateType`.
 
-2. **passlib 1.7.4 incompatible con bcrypt ≥ 4.2**: `detect_wrap_bug()` envía password >72 bytes, bcrypt ahora lanza `ValueError`. Fix: usar `bcrypt` directamente sin passlib.
+2. **passlib 1.7.4 incompatible con bcrypt ≥ 4.2**: Fix → usar `bcrypt` directamente sin passlib.
 
-3. **JWT `sub` debe ser string**: `python-jose` lanza `JWTClaimsError` si `sub` es entero. Fix: `str(user_id)` al crear, `int(sub)` al decodificar.
+3. **JWT `sub` debe ser string**: Fix → `str(user_id)` al crear, `int(sub)` al decodificar.
 
-4. **`pg_isready` sin `-d`**: usa el username como nombre de DB por defecto → logs FATAL. Fix: agregar `-d ${POSTGRES_DB:-finzen_db}`.
+4. **`pg_isready` sin `-d`**: Fix → agregar `-d ${POSTGRES_DB:-finzen_db}`.
 
----
+5. **Enum PostgreSQL requiere USING al cambiar tipo**: Al hacer `ALTER COLUMN status TYPE nuevo_enum`, PostgreSQL necesita `USING CASE ... END` explícito. Ver migración 004 como referencia.
 
-## Despliegue en producción — checklist completo
-
-### Opción recomendada: VPS + Docker Compose (igual que local)
-
-**Proveedor recomendado:** Hetzner CPX11 (~4€/mes) — 2 vCPU, 2GB RAM, suficiente para uso personal o pequeño equipo.
-
-### Paso a paso
-
-```bash
-# 1. En el servidor: instalar Docker
-curl -fsSL https://get.docker.com | sh
-
-# 2. Subir el código
-git clone <tu-repo> /opt/finzen
-# o: rsync -avz ./ usuario@servidor:/opt/finzen/
-
-# 3. Configurar variables de entorno
-cd /opt/finzen
-cp .env.example .env
-nano .env   # ← cambiar valores (ver sección siguiente)
-
-# 4. Levantar
-docker compose up -d --build
-
-# 5. SSL con Let's Encrypt
-apt install certbot python3-certbot-nginx
-certbot --nginx -d tudominio.com
-```
-
-### Variables .env para producción
-
-```env
-POSTGRES_USER=finzen
-POSTGRES_PASSWORD=<contraseña fuerte, 32+ caracteres>
-POSTGRES_DB=finzen_db
-
-DATABASE_URL=postgresql://finzen:<password>@db:5432/finzen_db
-
-# Generar con: python3 -c "import secrets; print(secrets.token_hex(64))"
-SECRET_KEY=<clave aleatoria de 64+ caracteres>
-
-CORS_ORIGINS=https://tudominio.com
-ACCESS_TOKEN_EXPIRE_MINUTES=10080
-```
-
-### Modificaciones necesarias en docker-compose para producción
-
-```yaml
-# Quitar exposición de puertos de la DB (no debe ser accesible desde fuera)
-db:
-  # ports:           ← COMENTAR O ELIMINAR ESTO
-  #   - "5432:5432"
-
-# El backend tampoco necesita exponerse si nginx hace proxy
-backend:
-  # ports:           ← opcional, comentar si nginx hace proxy interno
-  #   - "8000:8000"
-```
+6. **Transferencias inflan resumen del mes**: Las transferencias crean 2 transacciones (ingreso + gasto). El dashboard las excluye filtrando `transfer_pair_id == None`.
 
 ---
 
-## Seguridad — estado actual vs producción
+## Decisiones de arquitectura importantes
 
-| Aspecto | Estado actual | Para producción |
-|---------|--------------|-----------------|
-| Contraseñas | bcrypt ✓ | OK |
-| JWT | HS256, 7 días ✓ | Considerar reducir a 1 día + refresh token |
-| HTTPS | No (local) | **Obligatorio** — Let's Encrypt (gratis) |
-| CORS | Configurado ✓ | Cambiar a dominio real |
-| DB expuesta | Sí (puerto 5432) | **Quitar** el `ports:` de la DB |
-| SECRET_KEY | Débil | **Cambiar** por clave aleatoria |
-| Rate limiting | No | Agregar en `/auth/login` (slowapi) |
-| Verificación email | No | Recomendado agregar |
-| Recuperación contraseña | No | Recomendado agregar |
-| Backups DB | No | **Obligatorio** (ver abajo) |
+- `utils/auth.py`: usa bcrypt directo (sin passlib). `create_token` usa `str(user_id)`, `deps.py` convierte `int(sub)`.
+- Frontend es build estático servido por nginx → cambios en `.jsx` requieren `--build frontend` en local, y Vercel redespliega desde git en producción.
+- Backend tiene volume mount en local → cambios en `.py` se recogen sin rebuild (uvicorn --reload). En Render, el redeploy es automático por git push.
+- i18n usa recursos inlineados (importados como JSON) para evitar problemas con nginx SPA y rutas de archivos en producción.
+- `savings_goals`: los campos `current_amount`, `remaining_amount`, `estimated_date` son **calculados en el router** (`_compute_summary`), no almacenados en DB.
+- Dashboard resumen del mes excluye `transfer_pair_id IS NOT NULL` para no inflar ingresos/gastos con movimientos internos.
 
 ---
 
-## Backups de base de datos
+## Seguridad — estado actual
 
-```bash
-# Backup manual
-docker compose exec db pg_dump -U finzen finzen_db > backup_$(date +%Y%m%d).sql
-
-# Restaurar
-cat backup_20260218.sql | docker compose exec -T db psql -U finzen finzen_db
-
-# Backup automático diario con cron (agregar en el servidor)
-# crontab -e
-0 3 * * * cd /opt/finzen && docker compose exec -T db pg_dump -U finzen finzen_db > /backups/finzen_$(date +\%Y\%m\%d).sql
-
-# Subir backup a Backblaze B2 o S3 (instalar rclone)
-rclone copy /backups/ b2:mi-bucket/finzen-backups/
-```
+| Aspecto | Estado |
+|---------|--------|
+| Contraseñas | bcrypt directo ✓ |
+| JWT | HS256, 7 días, con revocación en logout ✓ |
+| HTTPS | Vercel + Render proveen SSL automático ✓ |
+| CORS | Configurado a dominio Vercel ✓ |
+| DB | Neon — no expuesta públicamente ✓ |
+| Rate limiting | `slowapi` en /auth/login (5/min) y otros endpoints ✓ |
+| Verificación email | Resend. Sin RESEND_API_KEY → auto-verifica (dev mode) ✓ |
+| Recuperación contraseña | Implementada con token + email ✓ |
+| Audit logs | Tabla `audit_logs` registra login, logout, registro, etc. ✓ |
 
 ---
 
-## Lo que falta para producción completa
+## Pendientes / roadmap
 
-### Alta prioridad
-- [ ] **Verificación de email al registrarse** — sin esto cualquiera usa emails falsos
-- [ ] **Recuperación de contraseña** — actualmente no existe forma de recuperarla
-- [ ] **Rate limiting en login** — previene fuerza bruta (librería: `slowapi`)
-
-### Servicio de email recomendado
-**Resend** (resend.com) — más fácil de integrar con FastAPI, 3.000 emails/mes gratis.
-
-```python
-# requirements.txt: agregar resend==2.x
-import resend
-resend.api_key = settings.resend_api_key
-
-resend.Emails.send({
-    "from": "noreply@tudominio.com",
-    "to": user.email,
-    "subject": "Verifica tu cuenta en FinZen",
-    "html": "<p>Haz clic aquí para verificar: <a href='...'>Verificar</a></p>",
-})
-```
-
-### Opciones de DB gestionada (alternativa a auto-gestionar backups)
-| Servicio | Gratis hasta | Notas |
-|----------|-------------|-------|
-| Neon.tech | 0.5 GB | PostgreSQL serverless, backups automáticos |
-| Supabase | 500 MB | PostgreSQL managed + dashboard visual |
-| Railway | 1 GB | Muy fácil de usar |
-
-Con cualquiera de estos, solo cambias `DATABASE_URL` en el `.env` y eliminas el servicio `db:` del `docker-compose.yml`.
-
----
-
-## Monitoreo básico (gratuito)
-
-- **Uptime Robot** (uptimerobot.com) — monitorea que el servidor responda, alerta por email si cae. Gratis para 50 monitores.
-- **Logs**: `docker compose logs -f` o configurar un agregador como Loki + Grafana.
+- [ ] **Página de perfil** — cambiar idioma, moneda y país después del registro (endpoint ya existe: `PATCH /auth/me/preferences`)
+- [ ] **useCurrency en todas las páginas** — actualmente la infraestructura está lista pero las páginas usan `formatCurrency` con defaults COP
+- [ ] **Notificaciones de gastos recurrentes** — avisar cuando se acerca la fecha de cobro
+- [ ] **Exportar datos** — CSV o PDF de transacciones por período
