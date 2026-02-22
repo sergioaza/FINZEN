@@ -9,6 +9,7 @@ class DebtCreate(BaseModel):
     type: DebtType
     date: date
     description: str = ""
+    account_id: int | None = None  # solo para type="owed" cuando ya se prestó el dinero
 
 
 class DebtUpdate(BaseModel):

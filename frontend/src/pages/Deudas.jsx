@@ -7,7 +7,7 @@ import { Modal } from "../components/common/Modal";
 import { Badge } from "../components/common/Badge";
 import { formatCurrency, formatDate, todayISO } from "../utils/format";
 
-const emptyForm = { counterpart_name: "", original_amount: "", type: "owe", date: todayISO(), description: "" };
+const emptyForm = { counterpart_name: "", original_amount: "", type: "owe", date: todayISO(), description: "", origin: "lent", account_id: "" };
 const emptyPayment = { amount: "", date: todayISO(), notes: "", account_id: "" };
 
 export default function Deudas() {
@@ -49,9 +49,23 @@ export default function Deudas() {
       setError("Todos los campos requeridos");
       return;
     }
+    if (form.type === "owed" && form.origin === "lent" && !form.account_id) {
+      setError("Selecciona la cuenta de la que salió el dinero");
+      return;
+    }
     setSaving(true);
     try {
-      await debtsApi.create({ ...form, original_amount: parseFloat(form.original_amount) });
+      const payload = {
+        counterpart_name: form.counterpart_name,
+        original_amount: parseFloat(form.original_amount),
+        type: form.type,
+        date: form.date,
+        description: form.description,
+        ...(form.type === "owed" && form.origin === "lent" && form.account_id
+          ? { account_id: parseInt(form.account_id) }
+          : {}),
+      };
+      await debtsApi.create(payload);
       setModal(null);
       fetchDebts();
     } catch (err) {
@@ -195,12 +209,55 @@ export default function Deudas() {
       <Modal isOpen={modal === "add"} onClose={() => setModal(null)} title="Nueva deuda">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => setForm({ ...form, type: "owe" })} className={`py-2 rounded-lg text-sm font-medium ${form.type === "owe" ? "bg-red-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}>Le debo</button>
-            <button onClick={() => setForm({ ...form, type: "owed" })} className={`py-2 rounded-lg text-sm font-medium ${form.type === "owed" ? "bg-emerald-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}>Me debe</button>
+            <button
+              onClick={() => setForm({ ...form, type: "owe", origin: "lent", account_id: "" })}
+              className={`py-2 rounded-lg text-sm font-medium ${form.type === "owe" ? "bg-red-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}
+            >Le debo</button>
+            <button
+              onClick={() => setForm({ ...form, type: "owed", origin: "lent", account_id: "" })}
+              className={`py-2 rounded-lg text-sm font-medium ${form.type === "owed" ? "bg-emerald-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}
+            >Me debe</button>
           </div>
+
+          {form.type === "owed" && (
+            <div>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">¿Cómo surgió esta deuda?</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setForm({ ...form, origin: "lent", account_id: "" })}
+                  className={`py-2 px-3 rounded-lg text-sm font-medium text-left ${form.origin === "lent" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}
+                >
+                  💸 Presté dinero
+                </button>
+                <button
+                  onClick={() => setForm({ ...form, origin: "credit", account_id: "" })}
+                  className={`py-2 px-3 rounded-lg text-sm font-medium text-left ${form.origin === "credit" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}
+                >
+                  🧾 Venta / servicio
+                </button>
+              </div>
+            </div>
+          )}
+
           <Input label={form.type === "owe" ? "¿A quién le debo?" : "¿Quién me debe?"} value={form.counterpart_name} onChange={(e) => setForm({ ...form, counterpart_name: e.target.value })} placeholder="Nombre..." />
           <Input label="Monto (COP)" type="number" value={form.original_amount} onChange={(e) => setForm({ ...form, original_amount: e.target.value })} placeholder="0" min="0" />
           <Input label="Fecha" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+
+          {form.type === "owed" && form.origin === "lent" && (
+            <Select
+              label="Descontar de cuenta (ya entregué el dinero)"
+              value={form.account_id}
+              onChange={(e) => setForm({ ...form, account_id: e.target.value })}
+            >
+              <option value="">— Selecciona una cuenta —</option>
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} ({formatCurrency(a.balance)})
+                </option>
+              ))}
+            </Select>
+          )}
+
           <Input label="Descripción" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Opcional..." />
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <div className="flex gap-3 pt-2">
