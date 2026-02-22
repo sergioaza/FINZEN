@@ -66,12 +66,16 @@ export default function Deudas() {
       setError("Monto y fecha son requeridos");
       return;
     }
+    if (!paymentForm.account_id) {
+      setError("Debes seleccionar una cuenta");
+      return;
+    }
     setSaving(true);
     try {
       await debtsApi.addPayment(selectedDebt.id, {
         ...paymentForm,
         amount: parseFloat(paymentForm.amount),
-        account_id: paymentForm.account_id ? parseInt(paymentForm.account_id) : null,
+        account_id: parseInt(paymentForm.account_id),
       });
       setModal(null);
       fetchDebts();
@@ -214,8 +218,12 @@ export default function Deudas() {
             </div>
           )}
           <Input label="Monto del abono (COP)" type="number" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} placeholder="0" min="0" />
-          <Select label="Descontar de cuenta (opcional)" value={paymentForm.account_id} onChange={(e) => setPaymentForm({ ...paymentForm, account_id: e.target.value })}>
-            <option value="">— Sin descontar de ninguna cuenta —</option>
+          <Select
+            label={selectedDebt?.type === "owe" ? "Descontar de cuenta" : "Acreditar a cuenta"}
+            value={paymentForm.account_id}
+            onChange={(e) => setPaymentForm({ ...paymentForm, account_id: e.target.value })}
+          >
+            <option value="">— Selecciona una cuenta —</option>
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name} ({formatCurrency(a.balance)})

@@ -21,7 +21,7 @@ class DebtPaymentCreate(BaseModel):
     amount: float
     date: date
     notes: str = ""
-    account_id: int | None = None
+    account_id: int
 
 
 class DebtPaymentOut(BaseModel):
