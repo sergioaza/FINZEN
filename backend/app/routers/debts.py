@@ -68,16 +68,24 @@ def add_payment(
     if data.amount > debt.remaining_amount:
         raise HTTPException(status_code=400, detail="El abono supera el saldo pendiente")
 
-    # Descontar saldo de la cuenta si se especificó
-    if data.account_id is not None:
-        account = db.query(Account).filter(Account.id == data.account_id, Account.user_id == current_user.id).first()
-        if not account:
-            raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+    # Actualizar saldo de cuenta según tipo de deuda
+    account = db.query(Account).filter(Account.id == data.account_id, Account.user_id == current_user.id).first()
+    if not account:
+        raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+
+    if debt.type.value == "owe":
+        # Yo debo → el abono es un GASTO que sale de mi cuenta
         if account.type == AccountType.debit:
             if account.balance < data.amount:
                 raise HTTPException(status_code=400, detail="Saldo insuficiente en la cuenta seleccionada")
             account.balance -= data.amount
-        else:  # crédito: el abono reduce la deuda de la tarjeta
+        else:  # crédito → usar tarjeta para pagar sube la deuda de la tarjeta
+            account.balance += data.amount
+    else:
+        # Me deben → recibo el abono, es un INGRESO a mi cuenta
+        if account.type == AccountType.debit:
+            account.balance += data.amount
+        else:  # crédito → ingreso reduce deuda de la tarjeta
             account.balance -= data.amount
 
     debt.remaining_amount -= data.amount
