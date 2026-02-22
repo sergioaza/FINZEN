@@ -18,8 +18,20 @@ def list_debts(db: Session = Depends(get_db), current_user: User = Depends(get_c
 
 @router.post("", response_model=DebtOut, status_code=201)
 def create_debt(data: DebtCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Si es "me deben" y se indicó cuenta, descontar el monto (ya presté el dinero)
+    if data.type.value == "owed" and data.account_id is not None:
+        account = db.query(Account).filter(Account.id == data.account_id, Account.user_id == current_user.id).first()
+        if not account:
+            raise HTTPException(status_code=404, detail="Cuenta no encontrada")
+        if account.type == AccountType.debit:
+            if account.balance < data.original_amount:
+                raise HTTPException(status_code=400, detail="Saldo insuficiente en la cuenta seleccionada")
+            account.balance -= data.original_amount
+        else:  # crédito → prestar con tarjeta sube la deuda de la tarjeta
+            account.balance += data.original_amount
+
     debt = Debt(
-        **data.model_dump(),
+        **{k: v for k, v in data.model_dump().items() if k != "account_id"},
         user_id=current_user.id,
         remaining_amount=data.original_amount,
     )
