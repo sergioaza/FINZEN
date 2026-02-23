@@ -20,6 +20,7 @@ import Recurrentes from "./pages/Recurrentes";
 import Deudas from "./pages/Deudas";
 import Cuentas from "./pages/Cuentas";
 import MetasAhorro from "./pages/MetasAhorro";
+import Perfil from "./pages/Perfil";
 
 const PAGE_TITLES = {
   "/": "Dashboard",
@@ -30,6 +31,7 @@ const PAGE_TITLES = {
   "/deudas": "Deudas",
   "/cuentas": "Cuentas",
   "/metas-ahorro": "Metas de Ahorro",
+  "/perfil": "Perfil",
 };
 
 function PrivateRoute() {
@@ -116,6 +118,7 @@ export default function App() {
             <Route path="/deudas" element={<Deudas />} />
             <Route path="/cuentas" element={<Cuentas />} />
             <Route path="/metas-ahorro" element={<MetasAhorro />} />
+            <Route path="/perfil" element={<Perfil />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

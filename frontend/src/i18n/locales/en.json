@@ -95,6 +95,21 @@
     "account": "Account",
     "no_transactions": "No transactions"
   },
+  "profile": {
+    "title": "Profile",
+    "subtitle": "Manage your information and preferences",
+    "account": "Account",
+    "name": "Name",
+    "email": "Email address",
+    "preferences": "Preferences",
+    "language": "Language",
+    "country": "Country",
+    "currency": "Currency",
+    "save": "Save changes",
+    "saving": "Saving...",
+    "success": "Preferences updated successfully",
+    "error": "Error saving changes"
+  },
   "debts": {
     "title": "Debts",
     "add": "+ New debt",

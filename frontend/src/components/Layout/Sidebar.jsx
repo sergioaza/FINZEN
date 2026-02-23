@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 
 const navItems = [
@@ -49,9 +49,9 @@ export function Sidebar({ onClose }) {
         ))}
       </nav>
 
-      {/* User info */}
+      {/* User info → perfil */}
       {user && (
-        <div className="px-4 py-4 border-t border-white/5">
+        <Link to="/perfil" onClick={onClose} className="block px-4 py-4 border-t border-white/5 hover:bg-white/5 transition-colors">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0">
               {user.name?.[0]?.toUpperCase()}
@@ -61,7 +61,7 @@ export function Sidebar({ onClose }) {
               <p className="text-xs text-gray-500 truncate">{user.email}</p>
             </div>
           </div>
-        </div>
+        </Link>
       )}
     </aside>
   );

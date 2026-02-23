@@ -95,6 +95,21 @@
     "account": "Cuenta",
     "no_transactions": "Sin transacciones"
   },
+  "profile": {
+    "title": "Perfil",
+    "subtitle": "Gestiona tu información y preferencias",
+    "account": "Cuenta",
+    "name": "Nombre",
+    "email": "Correo electrónico",
+    "preferences": "Preferencias",
+    "language": "Idioma",
+    "country": "País",
+    "currency": "Moneda",
+    "save": "Guardar cambios",
+    "saving": "Guardando...",
+    "success": "Preferencias actualizadas correctamente",
+    "error": "Error al guardar los cambios"
+  },
   "debts": {
     "title": "Deudas",
     "add": "+ Nueva deuda",
