@@ -1,16 +1,20 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { debtsApi } from "../api/debts";
 import { accountsApi } from "../api/accounts";
 import { Button } from "../components/common/Button";
 import { Input, Select } from "../components/common/Input";
 import { Modal } from "../components/common/Modal";
 import { Badge } from "../components/common/Badge";
-import { formatCurrency, formatDate, todayISO } from "../utils/format";
+import { formatDate, todayISO } from "../utils/format";
+import { useCurrency } from "../hooks/useCurrency";
 
 const emptyForm = { counterpart_name: "", original_amount: "", type: "owe", date: todayISO(), description: "", origin: "lent", account_id: "" };
 const emptyPayment = { amount: "", date: todayISO(), notes: "", account_id: "" };
 
 export default function Deudas() {
+  const { t } = useTranslation();
+  const formatAmount = useCurrency();
   const [debts, setDebts] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,11 +50,11 @@ export default function Deudas() {
 
   const handleSave = async () => {
     if (!form.counterpart_name || !form.original_amount || !form.date) {
-      setError("Todos los campos requeridos");
+      setError(t("debts.all_required"));
       return;
     }
     if (form.type === "owed" && form.origin === "lent" && !form.account_id) {
-      setError("Selecciona la cuenta de la que salió el dinero");
+      setError(t("debts.select_account_error"));
       return;
     }
     setSaving(true);
@@ -69,7 +73,7 @@ export default function Deudas() {
       setModal(null);
       fetchDebts();
     } catch (err) {
-      setError(err.response?.data?.detail || "Error al guardar");
+      setError(err.response?.data?.detail || t("debts.save_error"));
     } finally {
       setSaving(false);
     }
@@ -77,11 +81,11 @@ export default function Deudas() {
 
   const handlePayment = async () => {
     if (!paymentForm.amount || !paymentForm.date) {
-      setError("Monto y fecha son requeridos");
+      setError(t("debts.payment_required"));
       return;
     }
     if (!paymentForm.account_id) {
-      setError("Debes seleccionar una cuenta");
+      setError(t("debts.select_account_payment"));
       return;
     }
     setSaving(true);
@@ -94,16 +98,20 @@ export default function Deudas() {
       setModal(null);
       fetchDebts();
     } catch (err) {
-      setError(err.response?.data?.detail || "Error al registrar abono");
+      setError(err.response?.data?.detail || t("debts.payment_error"));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("¿Eliminar esta deuda?")) return;
-    await debtsApi.delete(id);
-    fetchDebts();
+    if (!confirm(t("debts.delete_confirm"))) return;
+    try {
+      await debtsApi.delete(id);
+      fetchDebts();
+    } catch (err) {
+      alert(err.response?.data?.detail || t("debts.delete_error"));
+    }
   };
 
   const owedByMe = debts.filter((d) => d.type === "owe" && d.status === "active");
@@ -123,15 +131,15 @@ export default function Deudas() {
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-gray-800 dark:text-white">{debt.counterpart_name}</h3>
               <Badge variant={debt.status === "paid" ? "income" : isOwe ? "expense" : "blue"}>
-                {debt.status === "paid" ? "Pagada" : isOwe ? "Le debo" : "Me debe"}
+                {debt.status === "paid" ? t("debts.paid_badge") : isOwe ? t("debts.i_owe") : t("debts.owed_to_me")}
               </Badge>
             </div>
             {debt.description && <p className="text-xs text-gray-400 mt-0.5">{debt.description}</p>}
             <p className="text-xs text-gray-400">{formatDate(debt.date)}</p>
           </div>
           <div className="text-right">
-            <p className={`text-lg font-bold ${isOwe ? "text-red-500" : "text-emerald-600"}`}>{formatCurrency(debt.remaining_amount)}</p>
-            <p className="text-xs text-gray-400">de {formatCurrency(debt.original_amount)}</p>
+            <p className={`text-lg font-bold ${isOwe ? "text-red-500" : "text-emerald-600"}`}>{formatAmount(debt.remaining_amount)}</p>
+            <p className="text-xs text-gray-400">{t("debts.of")} {formatAmount(debt.original_amount)}</p>
           </div>
         </div>
         <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mb-3">
@@ -139,7 +147,7 @@ export default function Deudas() {
         </div>
         {debt.status === "active" && (
           <div className="flex gap-2">
-            <Button size="sm" variant="secondary" onClick={() => openPayment(debt)}>Registrar abono</Button>
+            <Button size="sm" variant="secondary" onClick={() => openPayment(debt)}>{t("debts.register_payment")}</Button>
             <button onClick={() => handleDelete(debt.id)} className="text-gray-400 hover:text-red-500 transition-colors p-1">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
             </button>
@@ -152,20 +160,20 @@ export default function Deudas() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Deudas</h2>
-        <Button size="sm" onClick={openAdd}>+ Nueva deuda</Button>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t("debts.title")}</h2>
+        <Button size="sm" onClick={openAdd}>{t("debts.add")}</Button>
       </div>
 
       {/* Summary */}
       {(owedByMe.length > 0 || owedToMe.length > 0) && (
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-red-50 dark:bg-red-900/20 rounded-2xl p-4">
-            <p className="text-xs text-red-500 font-medium mb-1">Debo (total)</p>
-            <p className="text-xl font-bold text-red-600">{formatCurrency(totalOwe)}</p>
+            <p className="text-xs text-red-500 font-medium mb-1">{t("debts.i_owe_total")}</p>
+            <p className="text-xl font-bold text-red-600">{formatAmount(totalOwe)}</p>
           </div>
           <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl p-4">
-            <p className="text-xs text-emerald-600 font-medium mb-1">Me deben (total)</p>
-            <p className="text-xl font-bold text-emerald-600">{formatCurrency(totalOwed)}</p>
+            <p className="text-xs text-emerald-600 font-medium mb-1">{t("debts.owed_to_me_total")}</p>
+            <p className="text-xl font-bold text-emerald-600">{formatAmount(totalOwed)}</p>
           </div>
         </div>
       )}
@@ -176,7 +184,7 @@ export default function Deudas() {
         <div className="space-y-6">
           {owedByMe.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Deudas que tengo</h3>
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">{t("debts.my_debts")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {owedByMe.map((d) => <DebtCard key={d.id} debt={d} />)}
               </div>
@@ -184,7 +192,7 @@ export default function Deudas() {
           )}
           {owedToMe.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Me deben</h3>
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">{t("debts.owed_to_me_section")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {owedToMe.map((d) => <DebtCard key={d.id} debt={d} />)}
               </div>
@@ -192,7 +200,7 @@ export default function Deudas() {
           )}
           {paid.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">Saldadas</h3>
+              <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">{t("debts.settled")}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {paid.map((d) => <DebtCard key={d.id} debt={d} />)}
               </div>
@@ -200,99 +208,99 @@ export default function Deudas() {
           )}
           {debts.length === 0 && (
             <div className="text-center py-12 text-gray-400 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
-              <p className="text-lg">Sin deudas registradas</p>
+              <p className="text-lg">{t("debts.no_debts")}</p>
             </div>
           )}
         </div>
       )}
 
-      <Modal isOpen={modal === "add"} onClose={() => setModal(null)} title="Nueva deuda">
+      <Modal isOpen={modal === "add"} onClose={() => setModal(null)} title={t("debts.modal_title")}>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setForm({ ...form, type: "owe", origin: "lent", account_id: "" })}
               className={`py-2 rounded-lg text-sm font-medium ${form.type === "owe" ? "bg-red-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}
-            >Le debo</button>
+            >{t("debts.i_owe")}</button>
             <button
               onClick={() => setForm({ ...form, type: "owed", origin: "lent", account_id: "" })}
               className={`py-2 rounded-lg text-sm font-medium ${form.type === "owed" ? "bg-emerald-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}
-            >Me debe</button>
+            >{t("debts.owed_to_me")}</button>
           </div>
 
           {form.type === "owed" && (
             <div>
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">¿Cómo surgió esta deuda?</p>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{t("debts.origin_question")}</p>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setForm({ ...form, origin: "lent", account_id: "" })}
                   className={`py-2 px-3 rounded-lg text-sm font-medium text-left ${form.origin === "lent" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}
                 >
-                  💸 Presté dinero
+                  💸 {t("debts.lent_money")}
                 </button>
                 <button
                   onClick={() => setForm({ ...form, origin: "credit", account_id: "" })}
                   className={`py-2 px-3 rounded-lg text-sm font-medium text-left ${form.origin === "credit" ? "bg-blue-500 text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"}`}
                 >
-                  🧾 Venta / servicio
+                  🧾 {t("debts.sale_service")}
                 </button>
               </div>
             </div>
           )}
 
-          <Input label={form.type === "owe" ? "¿A quién le debo?" : "¿Quién me debe?"} value={form.counterpart_name} onChange={(e) => setForm({ ...form, counterpart_name: e.target.value })} placeholder="Nombre..." />
-          <Input label="Monto (COP)" type="number" value={form.original_amount} onChange={(e) => setForm({ ...form, original_amount: e.target.value })} placeholder="0" min="0" />
-          <Input label="Fecha" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+          <Input label={form.type === "owe" ? t("debts.who_do_i_owe") : t("debts.who_owes_me")} value={form.counterpart_name} onChange={(e) => setForm({ ...form, counterpart_name: e.target.value })} placeholder={t("debts.name_placeholder")} />
+          <Input label={t("debts.amount")} type="number" value={form.original_amount} onChange={(e) => setForm({ ...form, original_amount: e.target.value })} placeholder="0" min="0" />
+          <Input label={t("debts.date")} type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
 
           {form.type === "owed" && form.origin === "lent" && (
             <Select
-              label="Descontar de cuenta (ya entregué el dinero)"
+              label={t("debts.deduct_account")}
               value={form.account_id}
               onChange={(e) => setForm({ ...form, account_id: e.target.value })}
             >
-              <option value="">— Selecciona una cuenta —</option>
+              <option value="">{t("debts.select_account")}</option>
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.name} ({formatCurrency(a.balance)})
+                  {a.name} ({formatAmount(a.balance)})
                 </option>
               ))}
             </Select>
           )}
 
-          <Input label="Descripción" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Opcional..." />
+          <Input label={t("debts.description")} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder={t("debts.optional_placeholder")} />
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <div className="flex gap-3 pt-2">
-            <Button variant="secondary" className="flex-1" onClick={() => setModal(null)}>Cancelar</Button>
-            <Button className="flex-1" onClick={handleSave} disabled={saving}>{saving ? "Guardando..." : "Guardar"}</Button>
+            <Button variant="secondary" className="flex-1" onClick={() => setModal(null)}>{t("common.cancel")}</Button>
+            <Button className="flex-1" onClick={handleSave} disabled={saving}>{saving ? t("common.saving") : t("common.save")}</Button>
           </div>
         </div>
       </Modal>
 
-      <Modal isOpen={modal === "payment"} onClose={() => setModal(null)} title={`Abono — ${selectedDebt?.counterpart_name}`}>
+      <Modal isOpen={modal === "payment"} onClose={() => setModal(null)} title={`${t("debts.payment_modal_title")} — ${selectedDebt?.counterpart_name}`}>
         <div className="space-y-4">
           {selectedDebt && (
             <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Pendiente: <strong className="text-gray-900 dark:text-white">{formatCurrency(selectedDebt.remaining_amount)}</strong></p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t("debts.pending")}: <strong className="text-gray-900 dark:text-white">{formatAmount(selectedDebt.remaining_amount)}</strong></p>
             </div>
           )}
-          <Input label="Monto del abono (COP)" type="number" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} placeholder="0" min="0" />
+          <Input label={t("debts.payment_amount")} type="number" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} placeholder="0" min="0" />
           <Select
-            label={selectedDebt?.type === "owe" ? "Descontar de cuenta" : "Acreditar a cuenta"}
+            label={selectedDebt?.type === "owe" ? t("debts.deduct_from_account") : t("debts.credit_to_account")}
             value={paymentForm.account_id}
             onChange={(e) => setPaymentForm({ ...paymentForm, account_id: e.target.value })}
           >
-            <option value="">— Selecciona una cuenta —</option>
+            <option value="">{t("debts.select_account")}</option>
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.name} ({formatCurrency(a.balance)})
+                {a.name} ({formatAmount(a.balance)})
               </option>
             ))}
           </Select>
-          <Input label="Fecha" type="date" value={paymentForm.date} onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })} />
-          <Input label="Notas" value={paymentForm.notes} onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })} placeholder="Opcional..." />
+          <Input label={t("debts.date")} type="date" value={paymentForm.date} onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })} />
+          <Input label={t("debts.notes")} value={paymentForm.notes} onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })} placeholder={t("debts.optional_placeholder")} />
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <div className="flex gap-3 pt-2">
-            <Button variant="secondary" className="flex-1" onClick={() => setModal(null)}>Cancelar</Button>
-            <Button className="flex-1" onClick={handlePayment} disabled={saving}>{saving ? "Registrando..." : "Registrar"}</Button>
+            <Button variant="secondary" className="flex-1" onClick={() => setModal(null)}>{t("common.cancel")}</Button>
+            <Button className="flex-1" onClick={handlePayment} disabled={saving}>{saving ? t("debts.registering") : t("debts.register_payment")}</Button>
           </div>
         </div>
       </Modal>

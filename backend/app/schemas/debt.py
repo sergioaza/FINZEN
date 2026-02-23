@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from datetime import date, datetime
+from datetime import date as DateType, datetime
 from app.models.debt import DebtType, DebtStatus
 
 
@@ -7,7 +7,7 @@ class DebtCreate(BaseModel):
     counterpart_name: str
     original_amount: float
     type: DebtType
-    date: date
+    date: DateType
     description: str = ""
     account_id: int | None = None  # solo para type="owed" cuando ya se prestó el dinero
 
@@ -15,12 +15,12 @@ class DebtCreate(BaseModel):
 class DebtUpdate(BaseModel):
     counterpart_name: str | None = None
     description: str | None = None
-    status: DebtStatus | None = None
+    # status eliminado: solo se actualiza a "paid" automáticamente en add_payment
 
 
 class DebtPaymentCreate(BaseModel):
     amount: float
-    date: date
+    date: DateType
     notes: str = ""
     account_id: int
 
@@ -29,7 +29,7 @@ class DebtPaymentOut(BaseModel):
     id: int
     debt_id: int
     amount: float
-    date: date
+    date: DateType
     notes: str
 
     model_config = {"from_attributes": True}
@@ -42,7 +42,7 @@ class DebtOut(BaseModel):
     original_amount: float
     remaining_amount: float
     type: DebtType
-    date: date
+    date: DateType
     description: str
     status: DebtStatus
     created_at: datetime
