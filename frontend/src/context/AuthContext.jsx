@@ -51,6 +51,7 @@ export function AuthProvider({ children }) {
 
   const updateUser = (userData) => {
     setUser(userData);
+    if (userData?.locale) i18n.changeLanguage(userData.locale);
   };
 
   return (
