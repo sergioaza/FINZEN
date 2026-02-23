@@ -15,17 +15,21 @@ export function getCurrencyLocale(currency) {
   return CURRENCY_LOCALE_MAP[currency] || "es-CO";
 }
 
+// Monedas que no usan decimales en la práctica (pesos, etc.)
+const ZERO_DECIMAL_CURRENCIES = new Set(["COP", "CLP", "ARS"]);
+
 // Formatter cache para evitar recrear Intl.NumberFormat en cada render
 const formatterCache = {};
 
 function getFormatter(currency, locale) {
   const key = `${currency}:${locale}`;
   if (!formatterCache[key]) {
+    const decimals = ZERO_DECIMAL_CURRENCIES.has(currency) ? 0 : 2;
     formatterCache[key] = new Intl.NumberFormat(locale, {
       style: "currency",
       currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
     });
   }
   return formatterCache[key];

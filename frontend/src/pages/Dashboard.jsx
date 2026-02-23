@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
 import { dashboardApi } from "../api/dashboard";
-import { formatCurrency, formatDate } from "../utils/format";
+import { formatDate } from "../utils/format";
+import { useCurrency } from "../hooks/useCurrency";
 import { Badge } from "../components/common/Badge";
 
-function StatCard({ title, amount, subtitle, colorClass = "text-gray-900 dark:text-white", icon }) {
+function StatCard({ title, amount, subtitle, colorClass = "text-gray-900 dark:text-white", icon, formatAmount }) {
   return (
     <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
-          <p className={`text-2xl font-bold mt-1 ${colorClass}`}>{formatCurrency(amount)}</p>
+          <p className={`text-2xl font-bold mt-1 ${colorClass}`}>{formatAmount(amount)}</p>
           {subtitle && <p className="text-xs text-gray-400 mt-1">{subtitle}</p>}
         </div>
         <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800">{icon}</div>
@@ -18,7 +19,7 @@ function StatCard({ title, amount, subtitle, colorClass = "text-gray-900 dark:te
   );
 }
 
-function AccountRow({ account }) {
+function AccountRow({ account, formatAmount }) {
   const subtypeLabels = {
     cash: "Efectivo",
     savings: "Ahorros",
@@ -38,13 +39,13 @@ function AccountRow({ account }) {
           <p className="text-xs text-gray-400">{subtypeLabels[account.account_subtype]}</p>
         </div>
         <p className={`text-sm font-semibold ${isCredit ? "text-red-500" : "text-gray-900 dark:text-white"}`}>
-          {formatCurrency(account.balance)}
+          {formatAmount(account.balance)}
         </p>
       </div>
       {hasLimit && (
         <div className="mt-1.5 ml-6">
           <div className="flex justify-between text-xs text-gray-400 mb-0.5">
-            <span>Disponible: {formatCurrency(account.credit_limit - account.balance)}</span>
+            <span>Disponible: {formatAmount(account.credit_limit - account.balance)}</span>
             <span>{utilization.toFixed(0)}%</span>
           </div>
           <div className="h-1 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -60,6 +61,7 @@ function AccountRow({ account }) {
 }
 
 export default function Dashboard() {
+  const formatAmount = useCurrency();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -89,6 +91,7 @@ export default function Dashboard() {
           amount={data.total_assets}
           subtitle="Cuentas de débito"
           colorClass="text-emerald-600 dark:text-emerald-400"
+          formatAmount={formatAmount}
           icon={
             <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -100,6 +103,7 @@ export default function Dashboard() {
           amount={data.total_debt}
           subtitle="Tarjetas de crédito"
           colorClass="text-red-500 dark:text-red-400"
+          formatAmount={formatAmount}
           icon={
             <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
@@ -111,6 +115,7 @@ export default function Dashboard() {
           amount={data.net_balance}
           subtitle="Activos − Deuda"
           colorClass={data.net_balance >= 0 ? "text-blue-600 dark:text-blue-400" : "text-red-500"}
+          formatAmount={formatAmount}
           icon={
             <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -126,16 +131,16 @@ export default function Dashboard() {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-500 dark:text-gray-400">Ingresos</span>
-              <span className="text-sm font-semibold text-emerald-600">{formatCurrency(data.income_month)}</span>
+              <span className="text-sm font-semibold text-emerald-600">{formatAmount(data.income_month)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-500 dark:text-gray-400">Gastos</span>
-              <span className="text-sm font-semibold text-red-500">{formatCurrency(data.expense_month)}</span>
+              <span className="text-sm font-semibold text-red-500">{formatAmount(data.expense_month)}</span>
             </div>
             <div className="border-t border-gray-100 dark:border-gray-800 pt-3 flex justify-between items-center">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Balance</span>
               <span className={`text-sm font-bold ${data.income_month - data.expense_month >= 0 ? "text-emerald-600" : "text-red-500"}`}>
-                {formatCurrency(data.income_month - data.expense_month)}
+                {formatAmount(data.income_month - data.expense_month)}
               </span>
             </div>
           </div>
@@ -154,7 +159,7 @@ export default function Dashboard() {
                     <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{r.name}</p>
                     <p className="text-xs text-gray-400">{formatDate(r.next_date)}</p>
                   </div>
-                  <span className="text-sm font-semibold text-red-500">{formatCurrency(r.amount)}</span>
+                  <span className="text-sm font-semibold text-red-500">{formatAmount(r.amount)}</span>
                 </div>
               ))}
             </div>
@@ -170,7 +175,7 @@ export default function Dashboard() {
           {debitAccounts.length === 0 ? (
             <p className="text-sm text-gray-400 mt-4">Sin cuentas de débito</p>
           ) : (
-            debitAccounts.map((a) => <AccountRow key={a.id} account={a} />)
+            debitAccounts.map((a) => <AccountRow key={a.id} account={a} formatAmount={formatAmount} />)
           )}
         </div>
 
@@ -180,7 +185,7 @@ export default function Dashboard() {
           {creditAccounts.length === 0 ? (
             <p className="text-sm text-gray-400 mt-4">Sin tarjetas de crédito</p>
           ) : (
-            creditAccounts.map((a) => <AccountRow key={a.id} account={a} />)
+            creditAccounts.map((a) => <AccountRow key={a.id} account={a} formatAmount={formatAmount} />)
           )}
         </div>
       </div>
@@ -202,7 +207,7 @@ export default function Dashboard() {
                   <p className="text-xs text-gray-400">{formatDate(tx.date)}</p>
                 </div>
                 <span className={`text-sm font-semibold ${tx.type === "income" ? "text-emerald-600" : "text-red-500"}`}>
-                  {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
+                  {tx.type === "income" ? "+" : "-"}{formatAmount(tx.amount)}
                 </span>
               </div>
             ))}

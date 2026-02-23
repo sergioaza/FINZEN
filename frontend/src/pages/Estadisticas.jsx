@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { transactionsApi } from "../api/transactions";
 import { categoriesApi } from "../api/categories";
-import { formatCurrency } from "../utils/format";
+import { useCurrency } from "../hooks/useCurrency";
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -20,6 +20,7 @@ function Card({ title, children }) {
 }
 
 export default function Estadisticas() {
+  const formatAmount = useCurrency();
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
   const [year, setYear] = useState(new Date().getFullYear());
@@ -61,7 +62,7 @@ export default function Estadisticas() {
   // Balance line chart
   const lineData = monthlyData.map((d) => ({ ...d, balance: d.ingresos - d.gastos }));
 
-  const formatTooltip = (value) => formatCurrency(value);
+  const formatTooltip = (value) => formatAmount(value);
 
   if (loading) {
     return <div className="flex justify-center py-12"><div className="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>;
@@ -100,7 +101,7 @@ export default function Estadisticas() {
                   <div key={d.name} className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
                     <span className="text-xs text-gray-600 dark:text-gray-400 flex-1 truncate">{d.name}</span>
-                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{formatCurrency(d.value)}</span>
+                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{formatAmount(d.value)}</span>
                   </div>
                 ))}
               </div>
@@ -147,7 +148,7 @@ export default function Estadisticas() {
             ].map((item) => (
               <div key={item.label} className="flex justify-between items-center border-b border-gray-50 dark:border-gray-800 pb-3 last:border-0 last:pb-0">
                 <span className="text-sm text-gray-500 dark:text-gray-400">{item.label}</span>
-                <span className={`text-sm font-bold ${item.color}`}>{formatCurrency(item.value)}</span>
+                <span className={`text-sm font-bold ${item.color}`}>{formatAmount(item.value)}</span>
               </div>
             ))}
           </div>

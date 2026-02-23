@@ -4,7 +4,8 @@ import { Button } from "../components/common/Button";
 import { Input, Select } from "../components/common/Input";
 import { Modal } from "../components/common/Modal";
 import { Badge } from "../components/common/Badge";
-import { formatCurrency, formatDate, todayISO } from "../utils/format";
+import { formatDate, todayISO } from "../utils/format";
+import { useCurrency } from "../hooks/useCurrency";
 
 const COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#3b82f6", "#ef4444", "#14b8a6"];
 
@@ -25,6 +26,7 @@ const emptyForm = {
 };
 
 export default function MetasAhorro() {
+  const formatAmount = useCurrency();
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null); // null | "add" | "edit" | "quota"
@@ -186,21 +188,21 @@ export default function MetasAhorro() {
               {goal.description && <p className="text-xs text-gray-400 mt-0.5">{goal.description}</p>}
               {goal.quota_amount > 0 && (
                 <p className="text-xs text-gray-400">
-                  Cuota {freqLabel.toLowerCase()}: {formatCurrency(goal.quota_amount)}
+                  Cuota {freqLabel.toLowerCase()}: {formatAmount(goal.quota_amount)}
                 </p>
               )}
             </div>
           </div>
           <div className="text-right shrink-0 ml-3">
-            <p className="text-lg font-bold text-gray-800 dark:text-white">{formatCurrency(goal.current_amount)}</p>
-            <p className="text-xs text-gray-400">de {formatCurrency(goal.target_amount)}</p>
+            <p className="text-lg font-bold text-gray-800 dark:text-white">{formatAmount(goal.current_amount)}</p>
+            <p className="text-xs text-gray-400">de {formatAmount(goal.target_amount)}</p>
           </div>
         </div>
 
         <div className="mb-3">
           <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
             <span>{pct.toFixed(0)}%</span>
-            <span>{formatCurrency(goal.remaining_amount)} restante</span>
+            <span>{formatAmount(goal.remaining_amount)} restante</span>
           </div>
           <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
             <div
@@ -262,11 +264,11 @@ export default function MetasAhorro() {
           </div>
           <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl p-4">
             <p className="text-xs text-emerald-600 font-medium mb-1">Total ahorrado</p>
-            <p className="text-xl font-bold text-emerald-600">{formatCurrency(totalSaved)}</p>
+            <p className="text-xl font-bold text-emerald-600">{formatAmount(totalSaved)}</p>
           </div>
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4">
             <p className="text-xs text-gray-500 font-medium mb-1">Total objetivo</p>
-            <p className="text-xl font-bold text-gray-700 dark:text-gray-200">{formatCurrency(totalTarget)}</p>
+            <p className="text-xl font-bold text-gray-700 dark:text-gray-200">{formatAmount(totalTarget)}</p>
           </div>
         </div>
       )}
@@ -370,9 +372,9 @@ export default function MetasAhorro() {
           {selectedGoal && (
             <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm text-gray-500 dark:text-gray-400">
               Ahorrado:{" "}
-              <strong className="text-gray-900 dark:text-white">{formatCurrency(selectedGoal.current_amount)}</strong>
+              <strong className="text-gray-900 dark:text-white">{formatAmount(selectedGoal.current_amount)}</strong>
               {" / "}
-              {formatCurrency(selectedGoal.target_amount)}
+              {formatAmount(selectedGoal.target_amount)}
             </div>
           )}
           <Input

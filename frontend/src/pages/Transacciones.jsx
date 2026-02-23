@@ -6,7 +6,8 @@ import { Button } from "../components/common/Button";
 import { Input, Select } from "../components/common/Input";
 import { Modal } from "../components/common/Modal";
 import { Badge } from "../components/common/Badge";
-import { formatCurrency, formatDate, todayISO } from "../utils/format";
+import { formatDate, todayISO } from "../utils/format";
+import { useCurrency } from "../hooks/useCurrency";
 
 const emptyForm = {
   account_id: "",
@@ -26,6 +27,7 @@ const emptyTransfer = {
 };
 
 export default function Transacciones() {
+  const formatAmount = useCurrency();
   const [transactions, setTransactions] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -216,7 +218,7 @@ export default function Transacciones() {
                     <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{accountName(tx.account_id)}</td>
                     <td className="px-4 py-3 text-right font-semibold">
                       <span className={tx.type === "income" ? "text-emerald-600" : "text-red-500"}>
-                        {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
+                        {tx.type === "income" ? "+" : "-"}{formatAmount(tx.amount)}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -276,7 +278,7 @@ export default function Transacciones() {
         <div className="space-y-4">
           <Select label="Cuenta origen" value={transferForm.from_account_id} onChange={(e) => setTransferForm({ ...transferForm, from_account_id: e.target.value })}>
             <option value="">Seleccionar...</option>
-            {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({formatCurrency(a.balance)})</option>)}
+            {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} ({formatAmount(a.balance)})</option>)}
           </Select>
           <Select label="Cuenta destino" value={transferForm.to_account_id} onChange={(e) => setTransferForm({ ...transferForm, to_account_id: e.target.value })}>
             <option value="">Seleccionar...</option>
