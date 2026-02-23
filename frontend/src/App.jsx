@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { AuthProvider } from "./context/AuthContext";
 import { useAuth } from "./hooks/useAuth";
 import { Sidebar } from "./components/Layout/Sidebar";
@@ -22,16 +23,16 @@ import Cuentas from "./pages/Cuentas";
 import MetasAhorro from "./pages/MetasAhorro";
 import Perfil from "./pages/Perfil";
 
-const PAGE_TITLES = {
-  "/": "Dashboard",
-  "/transacciones": "Transacciones",
-  "/estadisticas": "Estadísticas",
-  "/presupuesto": "Presupuesto",
-  "/recurrentes": "Gastos Recurrentes",
-  "/deudas": "Deudas",
-  "/cuentas": "Cuentas",
-  "/metas-ahorro": "Metas de Ahorro",
-  "/perfil": "Perfil",
+const PAGE_TITLE_KEYS = {
+  "/": "nav.dashboard",
+  "/transacciones": "nav.transactions",
+  "/estadisticas": "nav.statistics",
+  "/presupuesto": "nav.budgets",
+  "/recurrentes": "nav.recurring",
+  "/deudas": "nav.debts",
+  "/cuentas": "nav.accounts",
+  "/metas-ahorro": "nav.goals",
+  "/perfil": "nav.profile",
 };
 
 function PrivateRoute() {
@@ -49,9 +50,11 @@ function PrivateRoute() {
 }
 
 function AppLayout() {
+  const { t } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const title = PAGE_TITLES[location.pathname] || "FinZen";
+  const titleKey = PAGE_TITLE_KEYS[location.pathname];
+  const title = titleKey ? t(titleKey) : "FinZen";
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
