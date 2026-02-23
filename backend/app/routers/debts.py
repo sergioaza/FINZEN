@@ -104,7 +104,7 @@ def add_payment(
     if debt.remaining_amount <= 0:
         debt.remaining_amount = 0
         debt.status = DebtStatus.paid
-    payment = DebtPayment(debt_id=debt_id, **data.model_dump())
+    payment = DebtPayment(debt_id=debt_id, **{k: v for k, v in data.model_dump().items() if k != "account_id"})
     db.add(payment)
     db.commit()
     db.refresh(payment)
