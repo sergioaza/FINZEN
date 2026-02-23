@@ -28,6 +28,10 @@ class Debt(Base):
     date: Mapped[DateType] = mapped_column(Date, nullable=False)
     description: Mapped[str] = mapped_column(String, default="")
     status: Mapped[DebtStatus] = mapped_column(Enum(DebtStatus), default=DebtStatus.active)
+    # Cuenta de origen (solo para type="owed": dinero que salió de esta cuenta al prestar)
+    account_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="debts")
