@@ -18,6 +18,8 @@ def list_debts(db: Session = Depends(get_db), current_user: User = Depends(get_c
 
 @router.post("", response_model=DebtOut, status_code=201)
 def create_debt(data: DebtCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if data.original_amount <= 0:
+        raise HTTPException(status_code=400, detail="El monto de la deuda debe ser mayor a 0")
     # Si es "me deben" y se indicó cuenta, descontar el monto (ya presté el dinero)
     if data.type.value == "owed" and data.account_id is not None:
         account = db.query(Account).filter(Account.id == data.account_id, Account.user_id == current_user.id).first()
@@ -79,6 +81,8 @@ def add_payment(
     debt = db.query(Debt).filter(Debt.id == debt_id, Debt.user_id == current_user.id).first()
     if not debt:
         raise HTTPException(status_code=404, detail="Deuda no encontrada")
+    if data.amount <= 0:
+        raise HTTPException(status_code=400, detail="El monto del abono debe ser mayor a 0")
     if data.amount > debt.remaining_amount:
         raise HTTPException(status_code=400, detail="El abono supera el saldo pendiente")
 
