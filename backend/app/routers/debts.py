@@ -28,6 +28,8 @@ def create_debt(data: DebtCreate, db: Session = Depends(get_db), current_user: U
                 raise HTTPException(status_code=400, detail="Saldo insuficiente en la cuenta seleccionada")
             account.balance -= data.original_amount
         else:  # crédito → prestar con tarjeta sube la deuda de la tarjeta
+            if account.credit_limit is not None and account.balance + data.original_amount > account.credit_limit:
+                raise HTTPException(status_code=400, detail="El monto supera el cupo disponible de la tarjeta")
             account.balance += data.original_amount
 
     debt = Debt(
@@ -92,6 +94,8 @@ def add_payment(
                 raise HTTPException(status_code=400, detail="Saldo insuficiente en la cuenta seleccionada")
             account.balance -= data.amount
         else:  # crédito → usar tarjeta para pagar sube la deuda de la tarjeta
+            if account.credit_limit is not None and account.balance + data.amount > account.credit_limit:
+                raise HTTPException(status_code=400, detail="El monto supera el cupo disponible de la tarjeta")
             account.balance += data.amount
     else:
         # Me deben → recibo el abono, es un INGRESO a mi cuenta
