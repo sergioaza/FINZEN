@@ -4,11 +4,11 @@ import { categoriesApi } from "../api/categories";
 import { Button } from "../components/common/Button";
 import { Input, Select } from "../components/common/Input";
 import { Modal } from "../components/common/Modal";
-import { formatCurrency } from "../utils/format";
+import { useCurrency } from "../hooks/useCurrency";
 
 const MONTHS_ES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-function ProgressBar({ spent, limit }) {
+function ProgressBar({ spent, limit, formatAmount }) {
   const pct = Math.min((spent / limit) * 100, 100);
   const color = pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-amber-500" : "bg-emerald-500";
   return (
@@ -17,7 +17,7 @@ function ProgressBar({ spent, limit }) {
         <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
       </div>
       <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-        <span>{formatCurrency(spent)} gastado</span>
+        <span>{formatAmount(spent)} gastado</span>
         <span>{pct.toFixed(0)}%</span>
       </div>
     </div>
@@ -25,6 +25,7 @@ function ProgressBar({ spent, limit }) {
 }
 
 export default function Presupuesto() {
+  const formatAmount = useCurrency();
   const today = new Date();
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [year, setYear] = useState(today.getFullYear());
@@ -102,14 +103,14 @@ export default function Presupuesto() {
           <div className="flex justify-between mb-3">
             <div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Total gastado</p>
-              <p className="text-xl font-bold text-red-500">{formatCurrency(totalSpent)}</p>
+              <p className="text-xl font-bold text-red-500">{formatAmount(totalSpent)}</p>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-500 dark:text-gray-400">Presupuesto total</p>
-              <p className="text-xl font-bold text-gray-900 dark:text-white">{formatCurrency(totalLimit)}</p>
+              <p className="text-xl font-bold text-gray-900 dark:text-white">{formatAmount(totalLimit)}</p>
             </div>
           </div>
-          <ProgressBar spent={totalSpent} limit={totalLimit} />
+          <ProgressBar spent={totalSpent} limit={totalLimit} formatAmount={formatAmount} />
         </div>
       )}
 
@@ -136,9 +137,9 @@ export default function Presupuesto() {
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 </div>
-                <ProgressBar spent={b.spent} limit={b.limit_amount} />
+                <ProgressBar spent={b.spent} limit={b.limit_amount} formatAmount={formatAmount} />
                 <div className="mt-2 text-right">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Límite: <strong>{formatCurrency(b.limit_amount)}</strong></span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Límite: <strong>{formatAmount(b.limit_amount)}</strong></span>
                 </div>
               </div>
             );

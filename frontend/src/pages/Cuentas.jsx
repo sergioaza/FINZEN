@@ -4,7 +4,7 @@ import { Button } from "../components/common/Button";
 import { Input, Select } from "../components/common/Input";
 import { Modal } from "../components/common/Modal";
 import { Badge } from "../components/common/Badge";
-import { formatCurrency } from "../utils/format";
+import { useCurrency } from "../hooks/useCurrency";
 
 const ACCOUNT_TYPES = [
   { value: "debit", label: "Débito" },
@@ -34,6 +34,7 @@ const SUBTYPE_LABELS = {
 const emptyForm = { name: "", type: "debit", account_subtype: "savings", balance: "", color: "#3B82F6", credit_limit: "" };
 
 export default function Cuentas() {
+  const formatAmount = useCurrency();
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
@@ -130,12 +131,12 @@ export default function Cuentas() {
         <div>
           <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">{isCredit ? "Deuda acumulada" : "Saldo disponible"}</p>
           <p className={`text-2xl font-bold ${isCredit ? "text-red-500" : "text-gray-900 dark:text-white"}`}>
-            {formatCurrency(account.balance)}
+            {formatAmount(account.balance)}
           </p>
           {hasLimit && (
             <div className="mt-3">
               <div className="flex justify-between text-xs text-gray-400 mb-1">
-                <span>Cupo disponible: {formatCurrency(available)}</span>
+                <span>Cupo disponible: {formatAmount(available)}</span>
                 <span>{utilization.toFixed(0)}% usado</span>
               </div>
               <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -144,7 +145,7 @@ export default function Cuentas() {
                   style={{ width: `${utilization}%` }}
                 />
               </div>
-              <p className="text-xs text-gray-400 mt-1">Cupo total: {formatCurrency(account.credit_limit)}</p>
+              <p className="text-xs text-gray-400 mt-1">Cupo total: {formatAmount(account.credit_limit)}</p>
             </div>
           )}
         </div>
@@ -164,15 +165,15 @@ export default function Cuentas() {
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl p-4">
             <p className="text-xs text-emerald-600 font-medium mb-1">Total activos</p>
-            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">{formatCurrency(totalAssets)}</p>
+            <p className="text-lg font-bold text-emerald-700 dark:text-emerald-400">{formatAmount(totalAssets)}</p>
           </div>
           <div className="bg-red-50 dark:bg-red-900/20 rounded-2xl p-4">
             <p className="text-xs text-red-500 font-medium mb-1">Total deuda</p>
-            <p className="text-lg font-bold text-red-600">{formatCurrency(totalDebt)}</p>
+            <p className="text-lg font-bold text-red-600">{formatAmount(totalDebt)}</p>
           </div>
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-4">
             <p className="text-xs text-blue-600 font-medium mb-1">Balance neto</p>
-            <p className={`text-lg font-bold ${totalAssets - totalDebt >= 0 ? "text-blue-700 dark:text-blue-400" : "text-red-600"}`}>{formatCurrency(totalAssets - totalDebt)}</p>
+            <p className={`text-lg font-bold ${totalAssets - totalDebt >= 0 ? "text-blue-700 dark:text-blue-400" : "text-red-600"}`}>{formatAmount(totalAssets - totalDebt)}</p>
           </div>
         </div>
       )}

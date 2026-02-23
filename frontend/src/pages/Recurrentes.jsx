@@ -6,7 +6,8 @@ import { Button } from "../components/common/Button";
 import { Input, Select } from "../components/common/Input";
 import { Modal } from "../components/common/Modal";
 import { Badge } from "../components/common/Badge";
-import { formatCurrency, formatDate, todayISO } from "../utils/format";
+import { formatDate, todayISO } from "../utils/format";
+import { useCurrency } from "../hooks/useCurrency";
 
 const FREQ_LABELS = {
   daily: "Diario",
@@ -27,6 +28,7 @@ const emptyForm = {
 };
 
 export default function Recurrentes() {
+  const formatAmount = useCurrency();
   const [recurrents, setRecurrents] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -150,7 +152,7 @@ export default function Recurrentes() {
                     <p className="text-xs text-gray-400 mt-0.5">{acc?.name} · {FREQ_LABELS[r.frequency]}</p>
                     {cat && <p className="text-xs text-gray-400">{cat.name}</p>}
                   </div>
-                  <p className="text-lg font-bold text-red-500">{formatCurrency(r.amount)}</p>
+                  <p className="text-lg font-bold text-red-500">{formatAmount(r.amount)}</p>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Próximo: {formatDate(r.next_date)}</p>
                 <div className="flex gap-2">
