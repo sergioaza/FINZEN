@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(docker compose:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(docker info:*)",
+      "Bash(Start-Process \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\")",
+      "Bash(ls -la \"C:\\\\Users\\\\sergi\\\\OneDrive\\\\Documentos\\\\Programación\\\\FinZen\\\\backend\\\\app\\\\models\"\" 2>&1 || echo \"Path not found, trying alternate... \")",
+      "Bash(tasklist:*)",
+      "Bash(powershell -Command \"Get-Process -Id 32608,19912 | Select-Object Id,ProcessName\")",
+      "Bash(docker stop:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(powershell -Command \"Get-Process -Id 34956 | Select-Object Id,ProcessName,Path\")",
+      "Bash(powershell -Command \"Stop-Process -Id 34956 -Force\")",
+      "Bash(git init:*)",
+      "Bash(git remote add:*)",
+      "Bash(git add:*)",
+      "Bash(git config:*)",
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(python -c:*)",
+      "Bash(docker run:*)"
+    ]
+  }
+}

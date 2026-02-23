@@ -175,8 +175,8 @@ FinZen/
 | `budgets` | id, user_id, category_id, month, year, limit_amount |
 | `recurring_expenses` | id, user_id, account_id, category_id, name, amount, frequency, next_date, is_active |
 | `recurring_payments` | id, recurring_expense_id, paid_date, amount |
-| `debts` | id, user_id, counterpart_name, original_amount, remaining_amount, type, status |
-| `debt_payments` | id, debt_id, amount, date, notes, **account_id** (opcional) |
+| `debts` | id, user_id, counterpart_name, original_amount, remaining_amount, type(`owe`/`owed`), status(`active`/`paid`), date, description |
+| `debt_payments` | id, debt_id, amount, date, notes — `account_id` no se almacena, solo se usa en el router para actualizar saldo |
 | `savings_goals` | id, user_id, name, target_amount, **quota_amount**, **frequency**, description, color, status(active/achieved) |
 | `goal_contributions` | id, goal_id, amount, date, notes, **is_quota_payment** |
 | `revoked_tokens` | id, jti, expires_at, revoked_at |
@@ -192,7 +192,12 @@ FinZen/
 **Transferencia entre cuentas:** crea 2 transacciones enlazadas por `transfer_pair_id`.
 El resumen del mes en Dashboard **excluye** transacciones con `transfer_pair_id != null`.
 
-**Abono a deuda con descuento de cuenta:** `debt_payments.account_id` es opcional. Si se pasa, el backend descuenta `amount` del `balance` de esa cuenta.
+**Abono a deuda (`POST /debts/{id}/payments`):** `account_id` es **obligatorio**. La lógica depende del tipo de deuda:
+- `type = "owe"` (yo debo) → pago es un **gasto**: débito `balance -= amount`, crédito `balance += amount`
+- `type = "owed"` (me deben) → pago es un **ingreso**: débito `balance += amount`, crédito `balance -= amount`
+- `account_id` no se almacena en DB — se usa solo en el router para actualizar el saldo y se descarta.
+
+**Creación de deuda tipo "owed" con origen "presté dinero":** Si se pasa `account_id` al crear, el backend deduce el monto de esa cuenta inmediatamente (el dinero ya salió). Si el origen es "venta/servicio", no se mueve ningún saldo. El campo `origin` es **solo frontend** — no existe en la DB.
 
 ---
 
@@ -209,6 +214,19 @@ El resumen del mes en Dashboard **excluye** transacciones con `transfer_pair_id 
 - Endpoints: `POST /goals/{id}/achieve`, `POST /goals/{id}/contributions`
 - UI: botón "Pagar cuota" (1 click, sin modal), "Otro monto" (modal libre), "Lograda ✓"
 - Migración 004 convierte enum `goalstatus(completed)` → `wishliststatus(achieved)` y migra `current_amount` a `goal_contributions`
+
+### Origen de deuda al crear (tipo "owed")
+- Campo `origin` en el formulario frontend: `"lent"` (presté dinero) vs `"credit"` (venta/servicio)
+- Si `origin = "lent"` → se envía `account_id` al backend → descuenta el monto de esa cuenta al crear
+- Si `origin = "credit"` → no se envía `account_id` → solo registra la deuda sin mover fondos
+- **El campo `origin` no existe en la DB ni en el schema backend** — es estado local del formulario
+- Validación frontend: si `type="owed"` y `origin="lent"` y no hay `account_id` → error
+
+### Abonos a deuda con cuenta obligatoria
+- `DebtPaymentCreate.account_id` es **obligatorio** (sin `| None`)
+- Lógica ingreso/gasto según tipo de deuda (ver sección "Lógica de saldos")
+- Labels contextuales en UI: "Descontar de cuenta" (owe) vs "Acreditar a cuenta" (owed)
+- No aplica validación de `credit_limit` — solo aplica a transacciones y transferencias
 
 ### i18n (español / inglés / portugués)
 - Librería: `i18next` + `react-i18next` (recursos inlineados, sin HTTP backend)
@@ -235,6 +253,10 @@ El resumen del mes en Dashboard **excluye** transacciones con `transfer_pair_id 
 5. **Enum PostgreSQL requiere USING al cambiar tipo**: Al hacer `ALTER COLUMN status TYPE nuevo_enum`, PostgreSQL necesita `USING CASE ... END` explícito. Ver migración 004 como referencia.
 
 6. **Transferencias inflan resumen del mes**: Las transferencias crean 2 transacciones (ingreso + gasto). El dashboard las excluye filtrando `transfer_pair_id == None`.
+
+7. **`origin` de deuda es solo frontend**: El campo `origin` ("lent"/"credit") no existe en DB ni schema backend. Es estado local del formulario que controla si se envía `account_id` al crear la deuda. No agregar `origin` al modelo ni al schema.
+
+8. **`account_id` en pagos de deuda no se almacena**: `DebtPayment` no tiene columna `account_id`. El router lo recibe, actualiza el saldo de la cuenta, y lo descarta. No está en `DebtPaymentOut`.
 
 ---
 
@@ -271,3 +293,6 @@ El resumen del mes en Dashboard **excluye** transacciones con `transfer_pair_id 
 - [ ] **useCurrency en todas las páginas** — actualmente la infraestructura está lista pero las páginas usan `formatCurrency` con defaults COP
 - [ ] **Notificaciones de gastos recurrentes** — avisar cuando se acerca la fecha de cobro
 - [ ] **Exportar datos** — CSV o PDF de transacciones por período
+- [ ] **Página de estadísticas avanzada** — gráficos de tendencias, categorías top, comparativa mensual
+- [ ] **Editar/eliminar pagos de deuda** — actualmente solo se pueden crear
+- [ ] **Archivar deudas pagadas** — filtro activo/pagado en la vista de deudas
