@@ -45,6 +45,7 @@ class DebtOut(BaseModel):
     date: DateType
     description: str
     status: DebtStatus
+    account_id: int | None
     created_at: datetime
     payments: list[DebtPaymentOut] = []
 
