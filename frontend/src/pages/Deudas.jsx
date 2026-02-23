@@ -27,10 +27,15 @@ export default function Deudas() {
 
   const fetchDebts = async () => {
     setLoading(true);
-    const [ds, accs] = await Promise.all([debtsApi.list(), accountsApi.list()]);
-    setDebts(ds);
-    setAccounts(accs);
-    setLoading(false);
+    try {
+      const [ds, accs] = await Promise.all([debtsApi.list(), accountsApi.list()]);
+      setDebts(ds);
+      setAccounts(accs);
+    } catch {
+      // el interceptor de axios maneja 401; otros errores dejan listas vacías
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchDebts(); }, []);

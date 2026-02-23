@@ -70,6 +70,7 @@ Estos son patrones válidos en este proyecto que pueden parecer incorrectos:
 | `account_id` en `DebtPaymentCreate` | Es obligatorio y correcto — se usa en el router para actualizar saldo. El problema sería pasarlo al constructor de `DebtPayment`. |
 | `origin` solo en el frontend | El campo no existe en el backend por diseño. |
 | `formatCurrency` en utils | Es el fallback válido para casos sin contexto de usuario (seed, tests, etc.). |
+| `account_id` ausente en modelo `DebtPayment` | Por diseño: `account_id` se usa transitoriamente en el router para actualizar saldo y se descarta. No se almacena en DB. El CLAUDE.md lo documenta explícitamente en la tabla `debt_payments`. Verificar CLAUDE.md antes de reportar ausencia de columna como bug. |
 
 ## Formato de reporte
 
