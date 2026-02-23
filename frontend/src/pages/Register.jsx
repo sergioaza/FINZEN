@@ -58,6 +58,7 @@ export default function Register() {
   const [form, setForm] = useState({ name: "", email: "", password: "", locale: "es", country: "", currency: "COP" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [slowWarning, setSlowWarning] = useState(false);
 
   const handleCountryChange = (country) => {
     const currency = COUNTRY_CURRENCY_MAP[country] || form.currency;
@@ -73,6 +74,7 @@ export default function Register() {
       return;
     }
     setLoading(true);
+    const timer = setTimeout(() => setSlowWarning(true), 3000);
     try {
       await authApi.register({ ...form, country: form.country || null });
       // Intentar login automático tras registro
@@ -91,6 +93,8 @@ export default function Register() {
     } catch (err) {
       setError(err.response?.data?.detail || "Error al registrarse");
     } finally {
+      clearTimeout(timer);
+      setSlowWarning(false);
       setLoading(false);
     }
   };
@@ -172,8 +176,18 @@ export default function Register() {
               </div>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Creando cuenta..." : "Crear cuenta gratis"}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  Creando cuenta...
+                </span>
+              ) : "Crear cuenta gratis"}
             </Button>
+            {slowWarning && (
+              <p className="text-sm text-gray-400 dark:text-gray-500 text-center animate-pulse">
+                Conectando con el servidor, un momento...
+              </p>
+            )}
           </form>
 
           <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
