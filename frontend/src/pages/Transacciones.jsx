@@ -175,7 +175,7 @@ export default function Transacciones() {
             {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </Select>
           <Button variant="secondary" size="sm" onClick={() => setFilters({ from: "", to: "", type: "", account_id: "", category_id: "" })}>
-            Limpiar
+            Limpiar filtros
           </Button>
         </div>
       </div>

@@ -55,3 +55,8 @@ app.include_router(dashboard.router)
 @app.get("/")
 def root():
     return {"message": "FinZen API", "docs": "/docs"}
+
+
+@app.get("/health", tags=["system"])
+def health():
+    return {"status": "ok"}

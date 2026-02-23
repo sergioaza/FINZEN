@@ -85,12 +85,14 @@ export default function Login() {
   const [error, setError] = useState("");
   const [unverified, setUnverified] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [slowWarning, setSlowWarning] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setUnverified(false);
     setLoading(true);
+    const timer = setTimeout(() => setSlowWarning(true), 3000);
     try {
       const data = await authApi.login(form);
       login(data.access_token, data.user);
@@ -102,6 +104,8 @@ export default function Login() {
         setError(err.response?.data?.detail || "Error al iniciar sesión");
       }
     } finally {
+      clearTimeout(timer);
+      setSlowWarning(false);
       setLoading(false);
     }
   };
@@ -166,8 +170,18 @@ export default function Login() {
               </div>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Ingresando..." : "Iniciar sesión"}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  Ingresando...
+                </span>
+              ) : "Iniciar sesión"}
             </Button>
+            {slowWarning && (
+              <p className="text-sm text-gray-400 dark:text-gray-500 text-center animate-pulse">
+                Conectando con el servidor, un momento...
+              </p>
+            )}
           </form>
 
           <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
