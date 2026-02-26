@@ -1,6 +1,7 @@
 import { NavLink, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../hooks/useAuth";
+import { LogoIcon } from "../Logo";
 
 const navItems = [
   { to: "/", labelKey: "nav.dashboard", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
@@ -21,10 +22,10 @@ export function Sidebar({ onClose }) {
     <aside className="flex flex-col h-full bg-gray-950 w-64 border-r border-white/5">
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-white/5">
-        <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-900/50">
-          <span className="text-white font-bold text-sm">F</span>
-        </div>
-        <span className="text-lg font-bold text-white tracking-tight">FinZen</span>
+        <LogoIcon className="w-9 h-9 shrink-0" />
+        <span className="text-lg tracking-tight text-slate-100 font-light">
+          Fin<span className="font-bold text-indigo-400">Zen</span>
+        </span>
       </div>
 
       {/* Nav */}
