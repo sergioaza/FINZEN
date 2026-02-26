@@ -5,6 +5,7 @@ import { AuthContext } from "../context/AuthContext";
 import { Input, Select } from "../components/common/Input";
 import { Button } from "../components/common/Button";
 import { LANGUAGES, COUNTRIES, CURRENCIES, COUNTRY_CURRENCY_MAP, COUNTRY_LOCALE_MAP } from "../utils/locale";
+import { LogoIcon } from "../components/Logo";
 
 function LeftPanel() {
   return (
@@ -15,11 +16,11 @@ function LeftPanel() {
       <div className="absolute top-1/2 right-1/3 w-40 h-40 bg-indigo-400/10 rounded-full blur-2xl" />
 
       {/* Logo */}
-      <div className="relative z-10 text-center mb-10">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-400 to-violet-400 rounded-2xl mb-5 shadow-2xl shadow-indigo-900/50">
-          <span className="text-white text-3xl font-bold">F</span>
-        </div>
-        <h1 className="text-4xl font-bold text-white tracking-tight">FinZen</h1>
+      <div className="relative z-10 text-center mb-10 flex flex-col items-center">
+        <LogoIcon className="w-20 h-20 mb-4 drop-shadow-2xl" />
+        <h1 className="text-4xl tracking-tight text-white font-light">
+          Fin<span className="font-bold text-indigo-300">Zen</span>
+        </h1>
         <p className="text-indigo-200/80 text-base mt-2">Empieza gratis, sin tarjeta requerida</p>
       </div>
 
@@ -108,10 +109,10 @@ export default function Register() {
         <div className="w-full max-w-sm">
           {/* Mobile-only logo */}
           <div className="flex flex-col items-center mb-10 lg:hidden">
-            <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-xl flex items-center justify-center shadow-lg mb-3">
-              <span className="text-white text-xl font-bold">F</span>
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">FinZen</h1>
+            <LogoIcon className="w-14 h-14 mb-3" />
+            <h1 className="text-2xl tracking-tight text-gray-900 dark:text-white font-light">
+              Fin<span className="font-bold text-indigo-600 dark:text-indigo-400">Zen</span>
+            </h1>
           </div>
 
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Crea tu cuenta</h2>
