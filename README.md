@@ -266,8 +266,6 @@ Cupo disponible = credit_limit - balance
 | Recuperación contraseña | Token temporal por email |
 | Audit logs | Tabla `audit_logs` con IP, acción y timestamp |
 
-> ⚠️ **Importante:** Nunca subas el archivo `.env` a Git. Está incluido en `.gitignore`. Usa siempre variables de entorno en producción.
-
 ---
 
 ## 🌍 Internacionalización
