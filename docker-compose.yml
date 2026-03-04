@@ -23,7 +23,7 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-finzen}:${POSTGRES_PASSWORD:-finzen_pass}@db:5432/${POSTGRES_DB:-finzen_db}
-      SECRET_KEY: ${SECRET_KEY:-REDACTED_SECRET_KEY}
+      SECRET_KEY: ${SECRET_KEY}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
     ports:
       - "8000:8000"
