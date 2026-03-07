@@ -9,7 +9,7 @@ import { Badge } from "../components/common/Badge";
 import { formatDate, todayISO } from "../utils/format";
 import { useCurrency } from "../hooks/useCurrency";
 
-const emptyForm = { counterpart_name: "", original_amount: "", type: "owe", date: todayISO(), description: "", origin: "lent", account_id: "" };
+const emptyForm = { counterpart_name: "", original_amount: "", type: "owe", date: todayISO(), description: "", origin: "lent", account_id: "", interest_rate: "", estimated_end_date: "" };
 const emptyPayment = { amount: "", date: todayISO(), notes: "", account_id: "" };
 
 export default function Deudas() {
@@ -73,6 +73,8 @@ export default function Deudas() {
         ...(form.type === "owed" && form.origin === "lent" && form.account_id
           ? { account_id: parseInt(form.account_id) }
           : {}),
+        ...(form.interest_rate ? { interest_rate: parseFloat(form.interest_rate) } : {}),
+        ...(form.estimated_end_date ? { estimated_end_date: form.estimated_end_date } : {}),
       };
       await debtsApi.create(payload);
       setModal(null);
@@ -133,18 +135,29 @@ export default function Deudas() {
       <div className="bg-white dark:bg-gray-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-800">
         <div className="flex items-start justify-between mb-2">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h3 className="font-semibold text-gray-800 dark:text-white">{debt.counterpart_name}</h3>
               <Badge variant={debt.status === "paid" ? "income" : isOwe ? "expense" : "blue"}>
                 {debt.status === "paid" ? t("debts.paid_badge") : isOwe ? t("debts.i_owe") : t("debts.owed_to_me")}
               </Badge>
+              {debt.interest_rate && (
+                <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                  {t("debts.with_interest", { rate: debt.interest_rate })}
+                </span>
+              )}
             </div>
             {debt.description && <p className="text-xs text-gray-400 mt-0.5">{debt.description}</p>}
             <p className="text-xs text-gray-400">{formatDate(debt.date)}</p>
+            {debt.estimated_end_date && (
+              <p className="text-xs text-gray-400">{t("debts.estimated_end_date")}: {formatDate(debt.estimated_end_date)}</p>
+            )}
           </div>
           <div className="text-right">
             <p className={`text-lg font-bold ${isOwe ? "text-red-500" : "text-emerald-600"}`}>{formatAmount(debt.remaining_amount)}</p>
             <p className="text-xs text-gray-400">{t("debts.of")} {formatAmount(debt.original_amount)}</p>
+            {debt.interest_rate && debt.remaining_amount > 0 && (
+              <p className="text-xs text-amber-500">{t("debts.projected_balance")}: {formatAmount(debt.projected_balance)}</p>
+            )}
           </div>
         </div>
         <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mb-3">
@@ -254,7 +267,11 @@ export default function Deudas() {
 
           <Input label={form.type === "owe" ? t("debts.who_do_i_owe") : t("debts.who_owes_me")} value={form.counterpart_name} onChange={(e) => setForm({ ...form, counterpart_name: e.target.value })} placeholder={t("debts.name_placeholder")} />
           <Input label={t("debts.amount")} type="number" value={form.original_amount} onChange={(e) => setForm({ ...form, original_amount: e.target.value })} placeholder="0" min="0" />
-          <Input label={t("debts.date")} type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+          <Input label={t("debts.date_label")} type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label={t("debts.interest_rate")} type="number" value={form.interest_rate} onChange={(e) => setForm({ ...form, interest_rate: e.target.value })} placeholder="0" min="0" step="0.1" />
+            <Input label={t("debts.estimated_end_date")} type="date" value={form.estimated_end_date} onChange={(e) => setForm({ ...form, estimated_end_date: e.target.value })} />
+          </div>
 
           {form.type === "owed" && form.origin === "lent" && (
             <Select

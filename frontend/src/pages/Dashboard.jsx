@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { dashboardApi } from "../api/dashboard";
 import { formatDate } from "../utils/format";
 import { useCurrency } from "../hooks/useCurrency";
@@ -19,13 +20,13 @@ function StatCard({ title, amount, subtitle, colorClass = "text-gray-900 dark:te
   );
 }
 
-function AccountRow({ account, formatAmount }) {
+function AccountRow({ account, formatAmount, t }) {
   const subtypeLabels = {
-    cash: "Efectivo",
-    savings: "Ahorros",
-    checking: "Corriente",
-    digital: "Digital",
-    credit_card: "Tarjeta Crédito",
+    cash: t("dashboard.subtype_cash"),
+    savings: t("dashboard.subtype_savings"),
+    checking: t("dashboard.subtype_checking"),
+    digital: t("dashboard.subtype_digital"),
+    credit_card: t("dashboard.subtype_credit_card"),
   };
   const isCredit = account.type === "credit";
   const hasLimit = isCredit && account.credit_limit != null && account.credit_limit > 0;
@@ -45,7 +46,7 @@ function AccountRow({ account, formatAmount }) {
       {hasLimit && (
         <div className="mt-1.5 ml-6">
           <div className="flex justify-between text-xs text-gray-400 mb-0.5">
-            <span>Disponible: {formatAmount(account.credit_limit - account.balance)}</span>
+            <span>{t("dashboard.available")}: {formatAmount(account.credit_limit - account.balance)}</span>
             <span>{utilization.toFixed(0)}%</span>
           </div>
           <div className="h-1 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -61,6 +62,7 @@ function AccountRow({ account, formatAmount }) {
 }
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const formatAmount = useCurrency();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -87,9 +89,9 @@ export default function Dashboard() {
       {/* Summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard
-          title="Total activos"
+          title={t("dashboard.total_assets")}
           amount={data.total_assets}
-          subtitle="Cuentas de débito"
+          subtitle={t("dashboard.debit_subtitle")}
           colorClass="text-emerald-600 dark:text-emerald-400"
           formatAmount={formatAmount}
           icon={
@@ -99,9 +101,9 @@ export default function Dashboard() {
           }
         />
         <StatCard
-          title="Total deuda"
+          title={t("dashboard.total_debt")}
           amount={data.total_debt}
-          subtitle="Tarjetas de crédito"
+          subtitle={t("dashboard.credit_subtitle")}
           colorClass="text-red-500 dark:text-red-400"
           formatAmount={formatAmount}
           icon={
@@ -111,9 +113,9 @@ export default function Dashboard() {
           }
         />
         <StatCard
-          title="Balance neto"
+          title={t("dashboard.net_balance")}
           amount={data.net_balance}
-          subtitle="Activos − Deuda"
+          subtitle={t("dashboard.assets_minus_debt")}
           colorClass={data.net_balance >= 0 ? "text-blue-600 dark:text-blue-400" : "text-red-500"}
           formatAmount={formatAmount}
           icon={
@@ -127,18 +129,18 @@ export default function Dashboard() {
       {/* Month summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-white mb-4">Resumen del mes</h2>
+          <h2 className="text-base font-semibold text-gray-800 dark:text-white mb-4">{t("dashboard.month_summary")}</h2>
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500 dark:text-gray-400">Ingresos</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">{t("dashboard.income")}</span>
               <span className="text-sm font-semibold text-emerald-600">{formatAmount(data.income_month)}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500 dark:text-gray-400">Gastos</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">{t("dashboard.expenses")}</span>
               <span className="text-sm font-semibold text-red-500">{formatAmount(data.expense_month)}</span>
             </div>
             <div className="border-t border-gray-100 dark:border-gray-800 pt-3 flex justify-between items-center">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Balance</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{t("dashboard.balance")}</span>
               <span className={`text-sm font-bold ${data.income_month - data.expense_month >= 0 ? "text-emerald-600" : "text-red-500"}`}>
                 {formatAmount(data.income_month - data.expense_month)}
               </span>
@@ -148,9 +150,9 @@ export default function Dashboard() {
 
         {/* Upcoming recurring */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-white mb-4">Próximos cobros (7 días)</h2>
+          <h2 className="text-base font-semibold text-gray-800 dark:text-white mb-4">{t("dashboard.upcoming_charges")}</h2>
           {data.upcoming_recurring.length === 0 ? (
-            <p className="text-sm text-gray-400 dark:text-gray-500">Sin cobros próximos</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500">{t("dashboard.no_upcoming")}</p>
           ) : (
             <div className="space-y-3">
               {data.upcoming_recurring.map((r) => (
@@ -171,21 +173,21 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Debit accounts */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-white mb-2">Cuentas de débito</h2>
+          <h2 className="text-base font-semibold text-gray-800 dark:text-white mb-2">{t("dashboard.debit_subtitle")}</h2>
           {debitAccounts.length === 0 ? (
-            <p className="text-sm text-gray-400 mt-4">Sin cuentas de débito</p>
+            <p className="text-sm text-gray-400 mt-4">{t("dashboard.no_debit")}</p>
           ) : (
-            debitAccounts.map((a) => <AccountRow key={a.id} account={a} formatAmount={formatAmount} />)
+            debitAccounts.map((a) => <AccountRow key={a.id} account={a} formatAmount={formatAmount} t={t} />)
           )}
         </div>
 
         {/* Credit accounts */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-white mb-2">Tarjetas de crédito</h2>
+          <h2 className="text-base font-semibold text-gray-800 dark:text-white mb-2">{t("dashboard.credit_subtitle")}</h2>
           {creditAccounts.length === 0 ? (
-            <p className="text-sm text-gray-400 mt-4">Sin tarjetas de crédito</p>
+            <p className="text-sm text-gray-400 mt-4">{t("dashboard.no_credit")}</p>
           ) : (
-            creditAccounts.map((a) => <AccountRow key={a.id} account={a} formatAmount={formatAmount} />)
+            creditAccounts.map((a) => <AccountRow key={a.id} account={a} formatAmount={formatAmount} t={t} />)
           )}
         </div>
       </div>
@@ -193,7 +195,7 @@ export default function Dashboard() {
       {/* Recent transactions */}
       {data.recent_transactions.length > 0 && (
         <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-white mb-4">Últimas transacciones</h2>
+          <h2 className="text-base font-semibold text-gray-800 dark:text-white mb-4">{t("dashboard.recent_transactions")}</h2>
           <div className="space-y-0">
             {data.recent_transactions.map((tx) => (
               <div key={tx.id} className="flex items-center gap-3 py-3 border-b border-gray-50 dark:border-gray-800 last:border-0">
@@ -203,7 +205,7 @@ export default function Dashboard() {
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">{tx.description || "Sin descripción"}</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">{tx.description || t("dashboard.no_description")}</p>
                   <p className="text-xs text-gray-400">{formatDate(tx.date)}</p>
                 </div>
                 <span className={`text-sm font-semibold ${tx.type === "income" ? "text-emerald-600" : "text-red-500"}`}>

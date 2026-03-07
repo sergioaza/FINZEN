@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { transactionsApi } from "../api/transactions";
 import { categoriesApi } from "../api/categories";
 import { useCurrency } from "../hooks/useCurrency";
@@ -7,8 +8,6 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   LineChart, Line, Legend,
 } from "recharts";
-
-const MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 function Card({ title, children }) {
   return (
@@ -20,6 +19,7 @@ function Card({ title, children }) {
 }
 
 export default function Estadisticas() {
+  const { t } = useTranslation();
   const formatAmount = useCurrency();
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -36,27 +36,29 @@ export default function Estadisticas() {
     }).finally(() => setLoading(false));
   }, [year]);
 
+  const MONTHS = t("statistics.months", { returnObjects: true });
+
   // By category (expenses only)
   const expenseByCategory = {};
   transactions
-    .filter((t) => t.type === "expense" && !t.transfer_pair_id)
-    .forEach((t) => {
-      const cat = categories.find((c) => c.id === t.category_id);
+    .filter((tx) => tx.type === "expense" && !tx.transfer_pair_id)
+    .forEach((tx) => {
+      const cat = categories.find((c) => c.id === tx.category_id);
       const name = cat?.name || "Sin categoría";
       const color = cat?.color || "#6B7280";
       if (!expenseByCategory[name]) expenseByCategory[name] = { name, value: 0, color };
-      expenseByCategory[name].value += t.amount;
+      expenseByCategory[name].value += tx.amount;
     });
   const pieData = Object.values(expenseByCategory).sort((a, b) => b.value - a.value).slice(0, 8);
 
   // Monthly income vs expense
   const monthlyData = Array.from({ length: 12 }, (_, i) => ({ month: MONTHS[i], ingresos: 0, gastos: 0 }));
   transactions
-    .filter((t) => !t.transfer_pair_id)
-    .forEach((t) => {
-      const m = new Date(t.date + "T00:00:00").getMonth();
-      if (t.type === "income") monthlyData[m].ingresos += t.amount;
-      else monthlyData[m].gastos += t.amount;
+    .filter((tx) => !tx.transfer_pair_id)
+    .forEach((tx) => {
+      const m = new Date(tx.date + "T00:00:00").getMonth();
+      if (tx.type === "income") monthlyData[m].ingresos += tx.amount;
+      else monthlyData[m].gastos += tx.amount;
     });
 
   // Balance line chart
@@ -71,7 +73,7 @@ export default function Estadisticas() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Estadísticas</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t("statistics.title")}</h2>
         <select
           value={year}
           onChange={(e) => setYear(Number(e.target.value))}
@@ -83,9 +85,9 @@ export default function Estadisticas() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pie chart - expenses by category */}
-        <Card title="Gastos por categoría">
+        <Card title={t("statistics.expenses_by_category")}>
           {pieData.length === 0 ? (
-            <p className="text-sm text-gray-400">Sin datos de gastos</p>
+            <p className="text-sm text-gray-400">{t("statistics.no_expense_data")}</p>
           ) : (
             <div className="space-y-4">
               <ResponsiveContainer width="100%" height={220}>
@@ -110,7 +112,7 @@ export default function Estadisticas() {
         </Card>
 
         {/* Bar chart - income vs expense by month */}
-        <Card title="Ingresos vs Gastos por mes">
+        <Card title={t("statistics.income_vs_expenses")}>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={monthlyData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
@@ -118,33 +120,33 @@ export default function Estadisticas() {
               <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
               <Tooltip formatter={formatTooltip} />
               <Legend />
-              <Bar dataKey="ingresos" fill="#10B981" radius={[4, 4, 0, 0]} name="Ingresos" />
-              <Bar dataKey="gastos" fill="#EF4444" radius={[4, 4, 0, 0]} name="Gastos" />
+              <Bar dataKey="ingresos" fill="#10B981" radius={[4, 4, 0, 0]} name={t("statistics.income")} />
+              <Bar dataKey="gastos" fill="#EF4444" radius={[4, 4, 0, 0]} name={t("statistics.expenses")} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
 
         {/* Line chart - balance */}
-        <Card title="Balance mensual">
+        <Card title={t("statistics.monthly_balance")}>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={lineData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
               <XAxis dataKey="month" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
               <Tooltip formatter={formatTooltip} />
-              <Line type="monotone" dataKey="balance" stroke="#3B82F6" strokeWidth={2} dot={{ fill: "#3B82F6", r: 3 }} name="Balance" />
+              <Line type="monotone" dataKey="balance" stroke="#3B82F6" strokeWidth={2} dot={{ fill: "#3B82F6", r: 3 }} name={t("statistics.balance")} />
             </LineChart>
           </ResponsiveContainer>
         </Card>
 
         {/* Summary stats */}
-        <Card title="Resumen del año">
+        <Card title={t("statistics.year_summary")}>
           <div className="space-y-4">
             {[
-              { label: "Total ingresos", value: monthlyData.reduce((s, d) => s + d.ingresos, 0), color: "text-emerald-600" },
-              { label: "Total gastos", value: monthlyData.reduce((s, d) => s + d.gastos, 0), color: "text-red-500" },
-              { label: "Balance neto", value: monthlyData.reduce((s, d) => s + d.balance, 0), color: "text-blue-600" },
-              { label: "Promedio mensual gastos", value: monthlyData.reduce((s, d) => s + d.gastos, 0) / 12, color: "text-orange-500" },
+              { label: t("statistics.total_income"), value: monthlyData.reduce((s, d) => s + d.ingresos, 0), color: "text-emerald-600" },
+              { label: t("statistics.total_expenses"), value: monthlyData.reduce((s, d) => s + d.gastos, 0), color: "text-red-500" },
+              { label: t("statistics.net_balance"), value: monthlyData.reduce((s, d) => s + d.balance, 0), color: "text-blue-600" },
+              { label: t("statistics.avg_monthly_expenses"), value: monthlyData.reduce((s, d) => s + d.gastos, 0) / 12, color: "text-orange-500" },
             ].map((item) => (
               <div key={item.label} className="flex justify-between items-center border-b border-gray-50 dark:border-gray-800 pb-3 last:border-0 last:pb-0">
                 <span className="text-sm text-gray-500 dark:text-gray-400">{item.label}</span>

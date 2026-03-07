@@ -12,3 +12,4 @@ python-dotenv==1.0.1
 python-dateutil==2.9.0
 slowapi==0.1.9
 resend==2.10.0
+google-auth>=2.27.0

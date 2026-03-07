@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.deps import get_db, get_current_user
 from app.models.account import Account
+from app.models.debt import Debt, DebtPayment, DebtStatus
 from app.models.recurring import RecurringExpense, RecurringPayment, Frequency
 from app.models.transaction import Transaction, TransactionType
 from app.models.user import User
@@ -92,5 +93,25 @@ def pay_recurring(recurring_id: int, db: Session = Depends(get_db), current_user
     r.next_date = _next_date(r.next_date, r.frequency)
     db.add(payment)
     db.add(tx)
+
+    # Spec 005: si está vinculado a una deuda activa, abonar automáticamente
+    if r.debt_id:
+        debt = db.query(Debt).filter(
+            Debt.id == r.debt_id,
+            Debt.user_id == current_user.id,
+            Debt.status == DebtStatus.active,
+        ).first()
+        if debt:
+            payment_amount = min(r.amount, debt.remaining_amount)
+            debt.remaining_amount = max(0, debt.remaining_amount - payment_amount)
+            if debt.remaining_amount <= 0:
+                debt.status = DebtStatus.paid
+            db.add(DebtPayment(
+                debt_id=debt.id,
+                amount=payment_amount,
+                date=today,
+                notes=f"Pago automático desde recurrente: {r.name}",
+            ))
+
     db.commit()
     return {"message": "Pago registrado", "next_date": r.next_date}

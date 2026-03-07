@@ -11,6 +11,7 @@ class RecurringCreate(BaseModel):
     frequency: Frequency
     day_of_charge: int
     next_date: date
+    debt_id: int | None = None
 
 
 class RecurringUpdate(BaseModel):
@@ -22,6 +23,7 @@ class RecurringUpdate(BaseModel):
     day_of_charge: int | None = None
     next_date: date | None = None
     is_active: bool | None = None
+    debt_id: int | None = None
 
 
 class RecurringOut(BaseModel):
@@ -35,6 +37,7 @@ class RecurringOut(BaseModel):
     day_of_charge: int
     next_date: date
     is_active: bool
+    debt_id: int | None
     created_at: datetime
 
     model_config = {"from_attributes": True}

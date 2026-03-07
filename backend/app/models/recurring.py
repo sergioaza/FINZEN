@@ -27,11 +27,16 @@ class RecurringExpense(Base):
     day_of_charge: Mapped[int] = mapped_column(Integer, nullable=False)
     next_date: Mapped[date] = mapped_column(Date, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Spec 005: vínculo opcional a deuda (al pagar se abona automáticamente)
+    debt_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("debts.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="recurring_expenses")
     account = relationship("Account", back_populates="recurring_expenses")
     category = relationship("Category", back_populates="recurring_expenses")
+    debt = relationship("Debt", foreign_keys=[debt_id])
     payments = relationship("RecurringPayment", back_populates="recurring_expense", cascade="all, delete-orphan")
 
 

@@ -67,6 +67,8 @@ def create_debt(data: DebtCreate, db: Session = Depends(get_db), current_user: U
         date=data.date,
         description=data.description,
         account_id=data.account_id if data.type.value == "owed" else None,
+        interest_rate=data.interest_rate,
+        estimated_end_date=data.estimated_end_date,
     )
     db.add(debt)
     db.commit()

@@ -32,10 +32,20 @@ class Debt(Base):
     account_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True
     )
+    # Spec 004: interés y fecha estimada de pago
+    interest_rate: Mapped[float | None] = mapped_column(Float, nullable=True)
+    estimated_end_date: Mapped[DateType | None] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="debts")
     payments = relationship("DebtPayment", back_populates="debt", cascade="all, delete-orphan")
+
+    @property
+    def projected_balance(self) -> float:
+        """Saldo proyectado al próximo mes aplicando interés (solo informativo)."""
+        if self.interest_rate:
+            return round(self.remaining_amount * (1 + self.interest_rate / 100), 2)
+        return self.remaining_amount
 
 
 class DebtPayment(Base):

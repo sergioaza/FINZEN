@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { budgetsApi } from "../api/budgets";
 import { categoriesApi } from "../api/categories";
 import { Button } from "../components/common/Button";
@@ -6,9 +7,7 @@ import { Input, Select } from "../components/common/Input";
 import { Modal } from "../components/common/Modal";
 import { useCurrency } from "../hooks/useCurrency";
 
-const MONTHS_ES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-
-function ProgressBar({ spent, limit, formatAmount }) {
+function ProgressBar({ spent, limit, formatAmount, t }) {
   const pct = Math.min((spent / limit) * 100, 100);
   const color = pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-amber-500" : "bg-emerald-500";
   return (
@@ -17,7 +16,7 @@ function ProgressBar({ spent, limit, formatAmount }) {
         <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
       </div>
       <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-        <span>{formatAmount(spent)} gastado</span>
+        <span>{formatAmount(spent)} {t("budgets.spent")}</span>
         <span>{pct.toFixed(0)}%</span>
       </div>
     </div>
@@ -25,6 +24,7 @@ function ProgressBar({ spent, limit, formatAmount }) {
 }
 
 export default function Presupuesto() {
+  const { t } = useTranslation();
   const formatAmount = useCurrency();
   const today = new Date();
   const [month, setMonth] = useState(today.getMonth() + 1);
@@ -55,7 +55,7 @@ export default function Presupuesto() {
 
   const handleSave = async () => {
     if (!form.category_id || !form.limit_amount) {
-      setError("Categoría y límite son requeridos");
+      setError(t("budgets.cat_limit_required"));
       return;
     }
     setSaving(true);
@@ -64,14 +64,14 @@ export default function Presupuesto() {
       setModal(false);
       fetchData();
     } catch (err) {
-      setError(err.response?.data?.detail || "Error al guardar");
+      setError(err.response?.data?.detail || t("budgets.save_error"));
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("¿Eliminar este presupuesto?")) return;
+    if (!confirm(t("budgets.delete_confirm"))) return;
     await budgetsApi.delete(id);
     fetchData();
   };
@@ -88,13 +88,13 @@ export default function Presupuesto() {
       <div className="flex flex-wrap gap-3 items-center justify-between">
         <div className="flex items-center gap-3">
           <Select value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-            {MONTHS_ES.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
+            {(t("budgets.months", { returnObjects: true })).map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
           </Select>
           <Select value={year} onChange={(e) => setYear(Number(e.target.value))}>
             {[2024, 2025, 2026].map((y) => <option key={y} value={y}>{y}</option>)}
           </Select>
         </div>
-        <Button size="sm" onClick={openAdd}>+ Nuevo presupuesto</Button>
+        <Button size="sm" onClick={openAdd}>{t("budgets.add")}</Button>
       </div>
 
       {/* Summary */}
@@ -102,15 +102,15 @@ export default function Presupuesto() {
         <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800">
           <div className="flex justify-between mb-3">
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total gastado</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t("budgets.total_spent")}</p>
               <p className="text-xl font-bold text-red-500">{formatAmount(totalSpent)}</p>
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-500 dark:text-gray-400">Presupuesto total</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t("budgets.total_budget")}</p>
               <p className="text-xl font-bold text-gray-900 dark:text-white">{formatAmount(totalLimit)}</p>
             </div>
           </div>
-          <ProgressBar spent={totalSpent} limit={totalLimit} formatAmount={formatAmount} />
+          <ProgressBar spent={totalSpent} limit={totalLimit} formatAmount={formatAmount} t={t} />
         </div>
       )}
 
@@ -119,8 +119,8 @@ export default function Presupuesto() {
         <div className="flex justify-center py-12"><div className="w-7 h-7 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
       ) : budgets.length === 0 ? (
         <div className="text-center py-12 text-gray-400 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800">
-          <p className="text-lg">Sin presupuestos</p>
-          <p className="text-sm mt-1">Crea un presupuesto para este mes</p>
+          <p className="text-lg">{t("budgets.no_budgets")}</p>
+          <p className="text-sm mt-1">{t("budgets.no_budgets_sub")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -137,9 +137,9 @@ export default function Presupuesto() {
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 </div>
-                <ProgressBar spent={b.spent} limit={b.limit_amount} formatAmount={formatAmount} />
+                <ProgressBar spent={b.spent} limit={b.limit_amount} formatAmount={formatAmount} t={t} />
                 <div className="mt-2 text-right">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">Límite: <strong>{formatAmount(b.limit_amount)}</strong></span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{t("budgets.limit_label")} <strong>{formatAmount(b.limit_amount)}</strong></span>
                 </div>
               </div>
             );
@@ -147,17 +147,17 @@ export default function Presupuesto() {
         </div>
       )}
 
-      <Modal isOpen={modal} onClose={() => setModal(false)} title="Nuevo presupuesto">
+      <Modal isOpen={modal} onClose={() => setModal(false)} title={t("budgets.modal_title")}>
         <div className="space-y-4">
-          <Select label="Categoría" value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })}>
-            <option value="">Seleccionar...</option>
+          <Select label={t("budgets.category")} value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })}>
+            <option value="">{t("budgets.select_category")}</option>
             {availableCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </Select>
-          <Input label="Límite mensual (COP)" type="number" value={form.limit_amount} onChange={(e) => setForm({ ...form, limit_amount: e.target.value })} placeholder="0" min="0" />
+          <Input label={t("budgets.monthly_limit")} type="number" value={form.limit_amount} onChange={(e) => setForm({ ...form, limit_amount: e.target.value })} placeholder="0" min="0" />
           {error && <p className="text-red-500 text-sm">{error}</p>}
           <div className="flex gap-3 pt-2">
-            <Button variant="secondary" className="flex-1" onClick={() => setModal(false)}>Cancelar</Button>
-            <Button className="flex-1" onClick={handleSave} disabled={saving}>{saving ? "Guardando..." : "Guardar"}</Button>
+            <Button variant="secondary" className="flex-1" onClick={() => setModal(false)}>{t("common.cancel")}</Button>
+            <Button className="flex-1" onClick={handleSave} disabled={saving}>{saving ? t("common.saving") : t("common.save")}</Button>
           </div>
         </div>
       </Modal>

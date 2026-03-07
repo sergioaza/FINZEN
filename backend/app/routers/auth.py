@@ -76,6 +76,8 @@ def login(request: Request, data: dict, db: Session = Depends(get_db)):
     if not user:
         log_action(db, "login_failed", ip=ip, details=f"email:{email}")
         raise HTTPException(status_code=401, detail="No existe una cuenta con ese correo")
+    if not user.password_hash:
+        raise HTTPException(status_code=401, detail="Esta cuenta usa Google para iniciar sesión")
     if not verify_password(password, user.password_hash):
         log_action(db, "login_failed", user_id=user.id, ip=ip)
         raise HTTPException(status_code=401, detail="Contraseña incorrecta")
@@ -204,6 +206,57 @@ def update_preferences(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.post("/google", response_model=Token)
+def google_login(request: Request, data: dict, db: Session = Depends(get_db)):
+    """Login / registro con Google OAuth. Verifica el id_token contra los servidores de Google."""
+    if not settings.google_client_id:
+        raise HTTPException(status_code=501, detail="Google login no está configurado")
+
+    credential = data.get("credential")
+    if not credential:
+        raise HTTPException(status_code=400, detail="Token de Google requerido")
+
+    try:
+        from google.oauth2 import id_token as google_id_token
+        from google.auth.transport import requests as google_requests
+        idinfo = google_id_token.verify_oauth2_token(
+            credential,
+            google_requests.Request(),
+            settings.google_client_id,
+        )
+    except Exception:
+        raise HTTPException(status_code=401, detail="Token de Google inválido")
+
+    google_id = idinfo["sub"]
+    email = idinfo["email"]
+    name = idinfo.get("name", email.split("@")[0])
+    ip = request.client.host if request.client else None
+
+    user = db.query(User).filter(User.google_id == google_id).first()
+    if not user:
+        user = db.query(User).filter(User.email == email).first()
+        if user:
+            user.google_id = google_id
+            user.email_verified = True
+        else:
+            user = User(
+                email=email,
+                name=name,
+                password_hash="",
+                email_verified=True,
+                google_id=google_id,
+            )
+            db.add(user)
+            db.flush()
+            seed_categories(db, user.id)
+        db.commit()
+        db.refresh(user)
+
+    token = create_token(user.id)
+    log_action(db, "google_login", user_id=user.id, ip=ip)
+    return Token(access_token=token, token_type="bearer", user=UserOut.model_validate(user))
 
 
 @router.patch("/me/onboarding", response_model=UserOut)

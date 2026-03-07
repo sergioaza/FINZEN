@@ -21,6 +21,7 @@ class User(Base):
     email_verify_token: Mapped[str | None] = mapped_column(String, nullable=True)
     reset_token: Mapped[str | None] = mapped_column(String, nullable=True)
     reset_token_expires: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    google_id: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
 
     accounts = relationship("Account", back_populates="user", cascade="all, delete-orphan")
     categories = relationship("Category", back_populates="user", cascade="all, delete-orphan")

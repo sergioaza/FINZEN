@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
 import { authApi } from "../api/auth";
 import { useAuth } from "../hooks/useAuth";
 import { Input } from "../components/common/Input";
 import { Button } from "../components/common/Button";
 import { LogoIcon } from "../components/Logo";
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
 function LeftPanel() {
   return (
@@ -128,6 +131,33 @@ export default function Login() {
 
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Bienvenido de nuevo</h2>
           <p className="text-gray-500 dark:text-gray-400 text-sm mb-8">Ingresa tus datos para continuar</p>
+
+          {GOOGLE_CLIENT_ID && (
+            <>
+              <GoogleLogin
+                onSuccess={async ({ credential }) => {
+                  try {
+                    const data = await authApi.googleLogin(credential);
+                    login(data.access_token, data.user);
+                    navigate(data.user.onboarding_done ? "/" : "/onboarding");
+                  } catch {
+                    setError("Error al iniciar sesión con Google");
+                  }
+                }}
+                onError={() => setError("Error al iniciar sesión con Google")}
+                width="100%"
+                text="continue_with"
+              />
+              <div className="relative my-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200 dark:border-gray-700" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="px-2 bg-white dark:bg-gray-950 text-gray-400">o</span>
+                </div>
+              </div>
+            </>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input

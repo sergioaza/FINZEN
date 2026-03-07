@@ -1,11 +1,14 @@
 import { useState, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
 import { authApi } from "../api/auth";
 import { AuthContext } from "../context/AuthContext";
 import { Input, Select } from "../components/common/Input";
 import { Button } from "../components/common/Button";
 import { LANGUAGES, COUNTRIES, CURRENCIES, COUNTRY_CURRENCY_MAP, COUNTRY_LOCALE_MAP } from "../utils/locale";
 import { LogoIcon } from "../components/Logo";
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
 function LeftPanel() {
   return (
@@ -117,6 +120,33 @@ export default function Register() {
 
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Crea tu cuenta</h2>
           <p className="text-gray-500 dark:text-gray-400 text-sm mb-8">Gratis, sin compromisos</p>
+
+          {GOOGLE_CLIENT_ID && (
+            <>
+              <GoogleLogin
+                onSuccess={async ({ credential }) => {
+                  try {
+                    const data = await authApi.googleLogin(credential);
+                    login(data.access_token, data.user);
+                    navigate(data.user.onboarding_done ? "/" : "/onboarding");
+                  } catch {
+                    setError("Error al registrarse con Google");
+                  }
+                }}
+                onError={() => setError("Error al registrarse con Google")}
+                width="100%"
+                text="signup_with"
+              />
+              <div className="relative my-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200 dark:border-gray-700" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="px-2 bg-white dark:bg-gray-950 text-gray-400">o</span>
+                </div>
+              </div>
+            </>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input

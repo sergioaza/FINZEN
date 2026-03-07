@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
     resend_api_key: str = ""
     frontend_url: str = "http://localhost:3000"
+    google_client_id: str = ""
 
     @property
     def cors_origins_list(self) -> list[str]:
